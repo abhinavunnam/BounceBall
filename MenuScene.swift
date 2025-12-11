@@ -28,8 +28,8 @@ class MenuScene: SKScene {
     
     // MARK: - Setup Methods
     private func setupScene() {
-        // Gradient background
-        backgroundColor = SKColor(red: 0.95, green: 0.85, blue: 0.90, alpha: 1.0)
+        // White background
+        backgroundColor = .white
     }
     
     private func createLogo() {
@@ -42,8 +42,8 @@ class MenuScene: SKScene {
         // Create a heart shape for "Angry Wife" theme
         let heartPath = createHeartPath(size: 80)
         let heart = SKShapeNode(path: heartPath)
-        heart.fillColor = .red
-        heart.strokeColor = .darkGray
+        heart.fillColor = .black
+        heart.strokeColor = .black
         heart.lineWidth = 3
         heart.setScale(0)
         logoNode.addChild(heart)
@@ -108,7 +108,7 @@ class MenuScene: SKScene {
         titleLabel = SKLabelNode(fontNamed: "Arial-BoldMT")
         titleLabel?.text = "BOUNCE BALL"
         titleLabel?.fontSize = 48
-        titleLabel?.fontColor = .darkGray
+        titleLabel?.fontColor = .black
         titleLabel?.position = CGPoint(x: frame.midX, y: frame.height * 0.45)
         titleLabel?.alpha = 0
         
@@ -120,7 +120,7 @@ class MenuScene: SKScene {
         subtitleLabel = SKLabelNode(fontNamed: "Arial")
         subtitleLabel?.text = "BasketBall Challenge"
         subtitleLabel?.fontSize = 20
-        subtitleLabel?.fontColor = .gray
+        subtitleLabel?.fontColor = .black
         subtitleLabel?.position = CGPoint(x: frame.midX, y: frame.height * 0.40)
         subtitleLabel?.alpha = 0
         
@@ -135,8 +135,8 @@ class MenuScene: SKScene {
         let buttonHeight: CGFloat = 60
         
         startButton = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 15)
-        startButton?.fillColor = SKColor(red: 1.0, green: 0.3, blue: 0.5, alpha: 1.0)
-        startButton?.strokeColor = .white
+        startButton?.fillColor = .black
+        startButton?.strokeColor = .black
         startButton?.lineWidth = 3
         startButton?.position = CGPoint(x: frame.midX, y: frame.height * 0.25)
         startButton?.name = "startButton"

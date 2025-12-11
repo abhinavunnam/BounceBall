@@ -19,7 +19,7 @@ import GameplayKit
 class GameScene: SKScene, SKPhysicsContactDelegate {
 
     // MARK: - Properties
-    private var ball: SKShapeNode?
+    private var ball: SKSpriteNode?
     private var basket: SKSpriteNode?
     private var platform: SKSpriteNode?
     private var launcher: SKSpriteNode?
@@ -63,7 +63,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private func createLauncher() {
         // Launcher at bottom left
-        launcher = SKSpriteNode(color: .brown, size: CGSize(width: 60, height: 60))
+        launcher = SKSpriteNode(color: .black, size: CGSize(width: 60, height: 60))
         launcher?.position = CGPoint(x: 50, y: frame.height * 0.2)
 
         // Create gradient texture
@@ -103,19 +103,17 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func createBall() {
-        let ballRadius: CGFloat = 20
-        ball = SKShapeNode(circleOfRadius: ballRadius)
+        let ballTexture = SKTexture(imageNamed: "ball")
+        let ballSize = CGSize(width: 40, height: 40)
+        ball = SKSpriteNode(texture: ballTexture, size: ballSize)
 
         guard let ball = ball else { return }
 
         // Ball starts on the launcher
         ball.position = CGPoint(x: 50, y: frame.height * 0.2 + 50)
-        ball.fillColor = .red
-        ball.strokeColor = .darkGray
-        ball.lineWidth = 2
 
         // Physics setup
-        ball.physicsBody = SKPhysicsBody(circleOfRadius: ballRadius)
+        ball.physicsBody = SKPhysicsBody(circleOfRadius: ballSize.width / 2)
         ball.physicsBody?.isDynamic = false // Static until launched
         ball.physicsBody?.categoryBitMask = PhysicsCategory.ball
         ball.physicsBody?.contactTestBitMask = PhysicsCategory.basket | PhysicsCategory.platform | PhysicsCategory.wall | PhysicsCategory.launcher
@@ -130,7 +128,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private func createPlatform() {
         // Platform in the middle between launcher and basket
-        platform = SKSpriteNode(color: .blue, size: CGSize(width: 100, height: 20))
+        platform = SKSpriteNode(color: .black, size: CGSize(width: 100, height: 20))
         platform?.position = CGPoint(x: frame.midX, y: frame.height * 0.5)
 
         guard let platform = platform else { return }
@@ -145,34 +143,64 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func createBasket() {
-        // Basket at top right
-        let basketWidth: CGFloat = 60
-        let basketHeight: CGFloat = 60
-        let wallThickness: CGFloat = 10
+        // Basket at top right - realistic basket design
+        let basketWidth: CGFloat = 70
+        let basketHeight: CGFloat = 80
+        let rimThickness: CGFloat = 8
+        let wallThickness: CGFloat = 6
 
         basket = SKSpriteNode()
         basket?.position = CGPoint(x: frame.width - 100, y: frame.height * 0.8)
 
         guard let basket = basket else { return }
 
-        // Left wall of basket
-        let leftWall = SKSpriteNode(color: .orange, size: CGSize(width: wallThickness, height: basketHeight))
-        leftWall.position = CGPoint(x: -basketWidth/2, y: 0)
-        leftWall.physicsBody = SKPhysicsBody(rectangleOf: leftWall.size)
+        // Top rim (wider opening)
+        let topRim = SKSpriteNode(color: .black, size: CGSize(width: basketWidth, height: rimThickness))
+        topRim.position = CGPoint(x: 0, y: basketHeight/2)
+        topRim.physicsBody = SKPhysicsBody(rectangleOf: topRim.size)
+        topRim.physicsBody?.isDynamic = false
+        topRim.physicsBody?.categoryBitMask = PhysicsCategory.wall
+        basket.addChild(topRim)
+
+        // Left curved wall (angled inward)
+        let leftWallPath = UIBezierPath()
+        leftWallPath.move(to: CGPoint(x: 0, y: 0))
+        leftWallPath.addCurve(
+            to: CGPoint(x: -basketWidth/4, y: basketHeight/2),
+            controlPoint1: CGPoint(x: -wallThickness, y: basketHeight/4),
+            controlPoint2: CGPoint(x: -basketWidth/3, y: basketHeight/2)
+        )
+        let leftWall = SKShapeNode(path: leftWallPath.cgPath)
+        leftWall.strokeColor = .black
+        leftWall.lineWidth = wallThickness
+        leftWall.fillColor = .clear
+        leftWall.position = CGPoint(x: -basketWidth/2, y: -basketHeight/2)
+        leftWall.physicsBody = SKPhysicsBody(edgeLoopFrom: leftWallPath.cgPath)
         leftWall.physicsBody?.isDynamic = false
         leftWall.physicsBody?.categoryBitMask = PhysicsCategory.wall
         basket.addChild(leftWall)
 
-        // Right wall of basket
-        let rightWall = SKSpriteNode(color: .orange, size: CGSize(width: wallThickness, height: basketHeight))
-        rightWall.position = CGPoint(x: basketWidth/2, y: 0)
-        rightWall.physicsBody = SKPhysicsBody(rectangleOf: rightWall.size)
+        // Right curved wall (angled inward)
+        let rightWallPath = UIBezierPath()
+        rightWallPath.move(to: CGPoint(x: 0, y: 0))
+        rightWallPath.addCurve(
+            to: CGPoint(x: basketWidth/4, y: basketHeight/2),
+            controlPoint1: CGPoint(x: wallThickness, y: basketHeight/4),
+            controlPoint2: CGPoint(x: basketWidth/3, y: basketHeight/2)
+        )
+        let rightWall = SKShapeNode(path: rightWallPath.cgPath)
+        rightWall.strokeColor = .black
+        rightWall.lineWidth = wallThickness
+        rightWall.fillColor = .clear
+        rightWall.position = CGPoint(x: basketWidth/2, y: -basketHeight/2)
+        rightWall.physicsBody = SKPhysicsBody(edgeLoopFrom: rightWallPath.cgPath)
         rightWall.physicsBody?.isDynamic = false
         rightWall.physicsBody?.categoryBitMask = PhysicsCategory.wall
         basket.addChild(rightWall)
 
-        // Bottom of basket (goal zone)
-        let bottom = SKSpriteNode(color: .green, size: CGSize(width: basketWidth - wallThickness * 2, height: wallThickness))
+        // Bottom net (goal zone)
+        let netWidth: CGFloat = basketWidth/2
+        let bottom = SKSpriteNode(color: .black, size: CGSize(width: netWidth, height: rimThickness))
         bottom.position = CGPoint(x: 0, y: -basketHeight/2)
         bottom.physicsBody = SKPhysicsBody(rectangleOf: bottom.size)
         bottom.physicsBody?.isDynamic = false
