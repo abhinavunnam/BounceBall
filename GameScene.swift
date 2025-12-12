@@ -169,9 +169,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         levelLabel?.text = "LEVEL 1"
         levelLabel?.fontSize = 20
         levelLabel?.fontColor = .black
-        // Position top left
+        // Position top left, moved down slightly
         levelLabel?.horizontalAlignmentMode = .left
-        levelLabel?.position = CGPoint(x: 20, y: frame.height - 40)
+        levelLabel?.position = CGPoint(x: 20, y: frame.height - 60) // Lowered from -40
         addChild(levelLabel!)
     }
     
@@ -333,15 +333,15 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     // Use a container for the scoreboard
 
     private func createScoreLabel() {
-        // Create Background
-        let scoreBoardWidth: CGFloat = 120 // Reduced from 160
-        let scoreBoardHeight: CGFloat = 50 // Reduced from 80
+        // Create Background - Expanded to provide more space
+        let scoreBoardWidth: CGFloat = 160 // Expanded
+        let scoreBoardHeight: CGFloat = 50 
         scoreBoard = SKShapeNode(rectOf: CGSize(width: scoreBoardWidth, height: scoreBoardHeight), cornerRadius: 10)
         scoreBoard?.fillColor = .black
         scoreBoard?.strokeColor = .white
         scoreBoard?.lineWidth = 2
         scoreBoard?.position = CGPoint(x: frame.midX, y: frame.height - 100)
-        scoreBoard?.zPosition = 100 // Ensure it's on top
+        scoreBoard?.zPosition = 100 
 
         guard let scoreBoard = scoreBoard else { return }
 
@@ -350,17 +350,24 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         titleLabel.text = "SCORE"
         titleLabel.fontSize = 20
         titleLabel.fontColor = .white
-        titleLabel.position = CGPoint(x: -15, y: 0) // Top half
-        titleLabel.verticalAlignmentMode = .center
+        titleLabel.horizontalAlignmentMode = .left // Align left
+        titleLabel.position = CGPoint(x: -scoreBoardWidth/2 + 15, y: -7) 
         scoreBoard.addChild(titleLabel)
 
         // Create Dynamic Score Value Node
         scoreLabel = SKLabelNode(fontNamed: "Arial-BoldMT")
-        scoreLabel?.text = "\(score)"
-        scoreLabel?.fontSize = 20 // Reduced size
+        if let config = currentLevelConfig {
+            scoreLabel?.text = "\(score)/\(config.targetScore)"
+        } else {
+             scoreLabel?.text = "0/0"
+        }
+        scoreLabel?.fontSize = 20 
         scoreLabel?.fontColor = .white
-        scoreLabel?.position = CGPoint(x: 40, y: 0) // Bottom half
-        scoreLabel?.verticalAlignmentMode = .center
+        
+        // Move "0/t" to the right for space
+        scoreLabel?.horizontalAlignmentMode = .right 
+        scoreLabel?.position = CGPoint(x: scoreBoardWidth/2 - 15, y: -7)
+        
         scoreBoard.addChild(scoreLabel!)
 
         addChild(scoreBoard)
