@@ -30,6 +30,15 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     private var isLaunched = false
     private var isResetting = false
     
+    // Level Properties
+    var startingLevelIndex = 0 // Public property to set start level
+    private var currentLevelIndex = 0
+    private var currentLevelConfig: LevelConfiguration?
+    private var levelLabel: SKLabelNode?
+    
+    // Platform Movement
+    private var platformDirection: CGFloat = 1.0 // 1 for right, -1 for left
+    
     // Correction for visual asset rotation (Asset points slightly Up/Left, so we subtract to aligning Right)
     // Adjust this if the cannon still looks off.
     private let cannonVisualCorrection: CGFloat = .pi / 8 // Approx 22.5 degrees
@@ -48,13 +57,22 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     override func didMove(to view: SKView) {
         setupPhysics()
         setupScene()
-        createLauncher()
-        createBall()
-        createPlatform()
-        createBasket()
+        
         createWalls()
+        
+        // UI Elements
         createScoreLabel()
         createFireButton()
+        createLevelLabel()
+        
+        // Initial Game Objects (Created once, repositioned per level)
+        createLauncher()
+        createPlatform()
+        createBasket()
+        createBall()
+        
+        // Load First Level
+        loadLevel(index: startingLevelIndex)
     }
 
     // MARK: - Setup Methods
@@ -105,8 +123,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         guard let ball = ball else { return }
 
         // Ball starts on the launcher
-        // Ball starts (hidden/inside) at the launcher center
-        ball.position = CGPoint(x: 50, y: frame.height * 0.2)
+        // Position ball at the muzzle tip based on initial cannon rotation (0 + correction)
+        let initialAngle = (launcher?.zRotation ?? 0) + cannonVisualCorrection
+        let offsetDistance: CGFloat = 50.0
+        let lp = launcher?.position ?? CGPoint(x: 50, y: frame.height * 0.2)
+        let bx = lp.x + cos(initialAngle) * offsetDistance
+        let by = lp.y + sin(initialAngle) * offsetDistance
+        ball.position = CGPoint(x: bx, y: by)
 
         // Physics setup - use circular body matching the visual size
         ball.physicsBody = SKPhysicsBody(circleOfRadius: ballSize.width / 2)
@@ -139,7 +162,62 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
 
         addChild(platform)
     }
-
+    
+    // Create Level Label
+    private func createLevelLabel() {
+        levelLabel = SKLabelNode(fontNamed: "Arial-BoldMT")
+        levelLabel?.text = "LEVEL 1"
+        levelLabel?.fontSize = 20
+        levelLabel?.fontColor = .black
+        // Position top left
+        levelLabel?.horizontalAlignmentMode = .left
+        levelLabel?.position = CGPoint(x: 20, y: frame.height - 40)
+        addChild(levelLabel!)
+    }
+    
+    // Load a specific level
+    private func loadLevel(index: Int) {
+        // Validation
+        guard index < LevelData.levels.count else {
+            print("GAME COMPLETED!")
+            levelLabel?.text = "YOU WIN!"
+            return
+        }
+        
+        currentLevelIndex = index
+        let config = LevelData.levels[index]
+        currentLevelConfig = config
+        
+        // Update UI
+        levelLabel?.text = "LEVEL \(config.levelNumber)"
+        
+        // Reset Score for the level (or keep cumulative? Let's reset for "Target Score")
+        score = 0
+        scoreLabel?.text = "0 / \(config.targetScore)"
+        
+        // Reposition Basket
+        if let basket = basket {
+            let cx = frame.width * config.basketPosition.x
+            let cy = frame.height * config.basketPosition.y
+            
+            // Animate to new position
+            let move = SKAction.move(to: CGPoint(x: cx, y: cy), duration: 0.5)
+            basket.run(move)
+        }
+        
+        // Reposition Platform
+        if let platform = platform {
+            let px = frame.width * config.platformPosition.x
+            let py = frame.height * config.platformPosition.y
+            
+            let move = SKAction.move(to: CGPoint(x: px, y: py), duration: 0.5)
+            platform.run(move)
+        }
+        
+        // Reset Ball
+        resetBall()
+    }
+        
     private func createBasket() {
         // Basket using "net" asset
         basket = SKSpriteNode(imageNamed: "net")
@@ -151,7 +229,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         basket?.size = CGSize(width: 100, height: 100)
         
         // Make translucent so we can see the ball inside
-        basket?.alpha = 0.8
+        basket?.alpha = 0.8 // More translucent
+        basket?.zPosition = 10 // Ensure it renders ON TOP of the ball
 
         guard let basket = basket else { return }
 
@@ -178,6 +257,27 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         rightRim.physicsBody?.isDynamic = false
         rightRim.physicsBody?.categoryBitMask = PhysicsCategory.wall
         basket.addChild(rightRim)
+        
+        // Net Funnel Walls (to make ball bounce inside)
+        // Left Net Wall (Angled)
+        let leftNetSize = CGSize(width: 8, height: 60)
+        let leftNet = SKSpriteNode(color: .clear, size: leftNetSize)
+        leftNet.position = CGPoint(x: -42, y: -5) // Shifted left (was -38)
+        leftNet.zRotation = 0.3 
+        leftNet.physicsBody = SKPhysicsBody(rectangleOf: leftNetSize)
+        leftNet.physicsBody?.isDynamic = false
+        leftNet.physicsBody?.categoryBitMask = PhysicsCategory.wall
+        basket.addChild(leftNet)
+        
+        // Right Net Wall (Angled)
+        let rightNetSize = CGSize(width: 8, height: 60)
+        let rightNet = SKSpriteNode(color: .clear, size: rightNetSize)
+        rightNet.position = CGPoint(x: 34, y: -5) // Shifted left (was 38)
+        rightNet.zRotation = -0.3 
+        rightNet.physicsBody = SKPhysicsBody(rectangleOf: rightNetSize)
+        rightNet.physicsBody?.isDynamic = false
+        rightNet.physicsBody?.categoryBitMask = PhysicsCategory.wall
+        basket.addChild(rightNet)
 
         // Add a sensor for scoring
         // Positioned lower so the ball has to fall completely in
@@ -352,6 +452,22 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // Assuming the cannon sprite points RIGHT by default:
         // We SUBTRACT the correction because the asset is intrinsicly rotated "Positive" (CCW).
         launcher.zRotation = angle - cannonVisualCorrection
+        
+        // Update ball position to follow muzzle if not yet launched
+        if let ball = ball, !isLaunched {
+            // Re-calculate physics angle for position
+            let physicsAngle = angle // This is the raw angle from atan2, which IS the physical angle
+            
+            // Cannon size is 80x80, so half is 40. Barrel tip is roughly 40 units out + margin = 50
+            let offsetDistance: CGFloat = 50.0
+            
+            let offsetX = cos(physicsAngle) * offsetDistance
+            let offsetY = sin(physicsAngle) * offsetDistance
+            
+            ball.position = CGPoint(x: launcher.position.x + offsetX, y: launcher.position.y + offsetY)
+            // Sync rotation too if desired, though ball is round
+            ball.zRotation = physicsAngle
+        }
     }
 
     // MARK: - Physics Contact Delegate
@@ -370,7 +486,25 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                  print("SCORING: Ball velocity dy is \(velocity.dy) (negative, so valid)")
                  // Ball scored in basket!
                 score += 1
-                scoreLabel?.text = "\(score)"
+                
+                // Show progress
+                if let config = currentLevelConfig {
+                     scoreLabel?.text = "\(score) / \(config.targetScore)"
+                     
+                     // Check Level Completion
+                     if score >= config.targetScore {
+                         print("LEVEL COMPLETE!")
+                         
+                         // Transition to Level Complete Screen
+                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                             self.goToLevelComplete()
+                         }
+                         return // Skip reset logic
+                     }
+                } else {
+                    scoreLabel?.text = "\(score)"
+                }
+                
                 print("SCORE UPDATED: \(score)")
                 
                 // Allow ball to fall to ground to trigger reset
@@ -387,36 +521,67 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         if collision == PhysicsCategory.ball | PhysicsCategory.wall {
             let contactPoint = contact.contactPoint
             if contactPoint.y < frame.height * 0.05 {
-                resetLevel()
+                resetBall()
             }
         }
     }
 
     // MARK: - Game Logic
-    private func resetLevel() {
-    // Remove old ball
-    ball?.removeFromParent()
-    
-    // Create new ball
-    isLaunched = false
-    isResetting = false
-    createBall()
-}
+    private func resetBall() {
+        // Remove old ball
+        ball?.removeFromParent()
+        
+        // Create new ball
+        isLaunched = false
+        isResetting = false
+        createBall()
+    }
 
     // MARK: - Update
     override func update(_ currentTime: TimeInterval) {
-    // Reset if ball is launched and has stopped moving or went off screen
-    if isLaunched, let ball = ball, !isResetting {
-        let velocity = ball.physicsBody?.velocity ?? CGVector.zero
-        let speed = sqrt(velocity.dx * velocity.dx + velocity.dy * velocity.dy)
-        
-        // If ball is barely moving or off screen, reset
-        if speed < 5 || ball.position.y < -100 {
-            isResetting = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self.resetLevel()
+        // Platform Movement Logic
+        if let config = currentLevelConfig, config.isPlatformMoving, let platform = platform {
+            // Simple horizontal movement logic
+            // If moving, we update x position by speed * direction
+            
+            let speed = config.platformMoveSpeed
+            var newX = platform.position.x + (speed * platformDirection)
+            
+            // Bounds check (Keep within screen with some margin)
+            let margin: CGFloat = 80 // Half platform width approx
+            if newX > frame.width - margin {
+                newX = frame.width - margin
+                platformDirection = -1 // Reverse
+            } else if newX < margin {
+                newX = margin
+                platformDirection = 1 // Reverse
+            }
+            
+            platform.position = CGPoint(x: newX, y: platform.position.y)
+        }
+    
+        // Reset if ball is launched and has stopped moving or went off screen
+        if isLaunched, let ball = ball, !isResetting {
+            let velocity = ball.physicsBody?.velocity ?? CGVector.zero
+            let speed = sqrt(velocity.dx * velocity.dx + velocity.dy * velocity.dy)
+            
+            // If ball is barely moving or off screen, reset
+            if speed < 5 || ball.position.y < -100 {
+                isResetting = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.resetBall()
+                }
             }
         }
     }
-}
+
+    
+    private func goToLevelComplete() {
+        let completeScene = LevelCompleteScene(size: self.size)
+        completeScene.scaleMode = .aspectFill
+        completeScene.nextLevelIndex = currentLevelIndex + 1
+        
+        let transition = SKTransition.crossFade(withDuration: 0.5)
+        view?.presentScene(completeScene, transition: transition)
+    }
 }

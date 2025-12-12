@@ -1,4 +1,3 @@
-
 //
 //  MenuScene.swift
 //  BounceBallGame
@@ -15,12 +14,11 @@ class MenuScene: SKScene {
     private var subtitleLabel: SKLabelNode?
     private var startButton: SKShapeNode?
     private var startButtonLabel: SKLabelNode?
-    private var logoNode: SKShapeNode?
     
     // MARK: - Scene Lifecycle
     override func didMove(to view: SKView) {
         setupScene()
-        createLogo()
+        createLogoElements()
         createTitle()
         createStartButton()
         animateEntrance()
@@ -28,79 +26,35 @@ class MenuScene: SKScene {
     
     // MARK: - Setup Methods
     private func setupScene() {
-        // White background
+        // White background to match GameScene
         backgroundColor = .white
     }
     
-    private func createLogo() {
-        // Create a simple logo using shapes (you can replace with image later)
-        logoNode = SKShapeNode()
-        logoNode?.position = CGPoint(x: frame.midX, y: frame.height * 0.65)
+    private func createLogoElements() {
+        // Decorative Ball
+        let ball = SKSpriteNode(imageNamed: "ball")
+        ball.size = CGSize(width: 60, height: 60)
+        ball.position = CGPoint(x: frame.midX - 40, y: frame.height * 0.65)
+        ball.zRotation = .pi / 4
+        ball.name = "logoBall"
+        addChild(ball)
         
-        guard let logoNode = logoNode else { return }
+        // Decorative Net
+        let net = SKSpriteNode(imageNamed: "net")
+        net.size = CGSize(width: 80, height: 80)
+        net.position = CGPoint(x: frame.midX + 40, y: frame.height * 0.6)
+        net.alpha = 0.8
+        net.zRotation = -0.1
+        net.name = "logoNet"
+        addChild(net)
         
-        // Create a heart shape for "Angry Wife" theme
-        let heartPath = createHeartPath(size: 80)
-        let heart = SKShapeNode(path: heartPath)
-        heart.fillColor = .black
-        heart.strokeColor = .black
-        heart.lineWidth = 3
-        heart.setScale(0)
-        logoNode.addChild(heart)
-        
-        // Add angry eyebrows
-        let leftBrow = SKShapeNode(rectOf: CGSize(width: 20, height: 4), cornerRadius: 2)
-        leftBrow.fillColor = .black
-        leftBrow.position = CGPoint(x: -15, y: 10)
-        leftBrow.zRotation = .pi / 6
-        logoNode.addChild(leftBrow)
-        
-        let rightBrow = SKShapeNode(rectOf: CGSize(width: 20, height: 4), cornerRadius: 2)
-        rightBrow.fillColor = .black
-        rightBrow.position = CGPoint(x: 15, y: 10)
-        rightBrow.zRotation = -.pi / 6
-        logoNode.addChild(rightBrow)
-        
-        addChild(logoNode)
-    }
-    
-    private func createHeartPath(size: CGFloat) -> CGPath {
-        let path = UIBezierPath()
-        let width = size
-        let height = size
-        
-        path.move(to: CGPoint(x: 0, y: -height * 0.3))
-        
-        // Left curve
-        path.addCurve(
-            to: CGPoint(x: -width * 0.5, y: height * 0.1),
-            controlPoint1: CGPoint(x: -width * 0.3, y: -height * 0.5),
-            controlPoint2: CGPoint(x: -width * 0.6, y: -height * 0.1)
-        )
-        
-        // Bottom left
-        path.addCurve(
-            to: CGPoint(x: 0, y: height * 0.5),
-            controlPoint1: CGPoint(x: -width * 0.5, y: height * 0.3),
-            controlPoint2: CGPoint(x: -width * 0.2, y: height * 0.5)
-        )
-        
-        // Bottom right
-        path.addCurve(
-            to: CGPoint(x: width * 0.5, y: height * 0.1),
-            controlPoint1: CGPoint(x: width * 0.2, y: height * 0.5),
-            controlPoint2: CGPoint(x: width * 0.5, y: height * 0.3)
-        )
-        
-        // Right curve
-        path.addCurve(
-            to: CGPoint(x: 0, y: -height * 0.3),
-            controlPoint1: CGPoint(x: width * 0.6, y: -height * 0.1),
-            controlPoint2: CGPoint(x: width * 0.3, y: -height * 0.5)
-        )
-        
-        path.close()
-        return path.cgPath
+        // Add a "bouncing" animation to the ball
+        let moveUp = SKAction.moveBy(x: 0, y: 20, duration: 0.8)
+        moveUp.timingMode = .easeOut
+        let moveDown = SKAction.moveBy(x: 0, y: -20, duration: 0.6)
+        moveDown.timingMode = .easeIn
+        let bounce = SKAction.sequence([moveUp, moveDown])
+        ball.run(SKAction.repeatForever(bounce))
     }
     
     private func createTitle() {
@@ -118,9 +72,9 @@ class MenuScene: SKScene {
         
         // Subtitle
         subtitleLabel = SKLabelNode(fontNamed: "Arial")
-        subtitleLabel?.text = "BasketBall Challenge"
+        subtitleLabel?.text = "Basketball Challenge"
         subtitleLabel?.fontSize = 20
-        subtitleLabel?.fontColor = .black
+        subtitleLabel?.fontColor = .gray
         subtitleLabel?.position = CGPoint(x: frame.midX, y: frame.height * 0.40)
         subtitleLabel?.alpha = 0
         
@@ -157,13 +111,6 @@ class MenuScene: SKScene {
     }
     
     private func animateEntrance() {
-        // Animate logo
-        if let logoNode = logoNode, let heart = logoNode.children.first {
-            let scaleUp = SKAction.scale(to: 1.0, duration: 0.5)
-            scaleUp.timingMode = .easeOut
-            heart.run(scaleUp)
-        }
-        
         // Animate title
         let fadeIn = SKAction.fadeIn(withDuration: 0.5)
         titleLabel?.run(SKAction.sequence([
@@ -181,8 +128,8 @@ class MenuScene: SKScene {
             SKAction.wait(forDuration: 0.7),
             fadeIn,
             SKAction.repeatForever(SKAction.sequence([
-                SKAction.scale(to: 1.05, duration: 0.5),
-                SKAction.scale(to: 1.0, duration: 0.5)
+                SKAction.scale(to: 1.05, duration: 0.8),
+                SKAction.scale(to: 1.0, duration: 0.8)
             ]))
         ]))
     }
@@ -194,7 +141,8 @@ class MenuScene: SKScene {
         let touchedNodes = nodes(at: location)
         
         for node in touchedNodes {
-            if node.name == "startButton" {
+            // Check button or label
+            if node.name == "startButton" || node.parent?.name == "startButton" {
                 startButtonTapped()
                 break
             }
@@ -208,7 +156,7 @@ class MenuScene: SKScene {
         startButton?.run(SKAction.sequence([scaleDown, scaleUp]))
         
         // Transition to game scene
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             self.transitionToGame()
         }
     }
@@ -217,7 +165,7 @@ class MenuScene: SKScene {
         let gameScene = GameScene(size: self.size)
         gameScene.scaleMode = .aspectFill
         
-        let transition = SKTransition.fade(withDuration: 1.0)
+        let transition = SKTransition.fade(with: .white, duration: 1.0)
         self.view?.presentScene(gameScene, transition: transition)
     }
 }
