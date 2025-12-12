@@ -24,9 +24,15 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     private var platform: SKSpriteNode?
     private var launcher: SKSpriteNode?
     private var scoreLabel: SKLabelNode?
+    private var scoreBoard: SKShapeNode?
+    private var fireButton: SKShapeNode?
     private var score = 0
     private var isLaunched = false
     private var isResetting = false
+    
+    // Correction for visual asset rotation (Asset points slightly Up/Left, so we subtract to aligning Right)
+    // Adjust this if the cannon still looks off.
+    private let cannonVisualCorrection: CGFloat = .pi / 8 // Approx 22.5 degrees
 
     // Physics categories for collision detection
     // Memory efficient way to handle collision tracking
@@ -48,6 +54,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         createBasket()
         createWalls()
         createScoreLabel()
+        createFireButton()
     }
 
     // MARK: - Setup Methods
@@ -62,62 +69,51 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func createLauncher() {
-        // Launcher at bottom left
-        launcher = SKSpriteNode(color: .black, size: CGSize(width: 60, height: 60))
+        // Launcher using "canon" asset
+        launcher = SKSpriteNode(imageNamed: "canon")
+        // Position at bottom left
         launcher?.position = CGPoint(x: 50, y: frame.height * 0.2)
+        // Scale down if necessary, though SKTexture usually handles it.
+        // Assuming canon needs to be roughly same size as before or appropriate for the asset.
+        // Let's set a size to ensure it's not huge, or we can trust the asset size.
+        // Let's start with a reasonable size similar to previous box
+        launcher?.size = CGSize(width: 80, height: 80)
 
-        // Create gradient texture
-        let gradientLayer = CAGradientLayer()
-        gradientLayer.frame = CGRect(origin: .zero, size: size)
-        gradientLayer.colors = [
-            UIColor(red: 0.6, green: 0.3, blue: 0.1, alpha: 1.0).cgColor,
-            UIColor(red: 0.8, green: 0.5, blue: 0.2, alpha: 1.0).cgColor,
-            UIColor(red: 0.6, green: 0.3, blue: 0.1, alpha: 1.0).cgColor
-        ]
-        gradientLayer.startPoint = CGPoint(x: 0, y: 0.5)
-        gradientLayer.endPoint = CGPoint(x: 1, y: 0.5)
-        
-        // Create a texture from the gradient
-        let renderer = UIGraphicsImageRenderer(size: size)
-        let image = renderer.image { ctx in
-            gradientLayer.render(in: ctx.cgContext)
-        }
-        let texture = SKTexture(image: image)
-        let launcherBase = SKSpriteNode(texture: texture, size: size)
-        launcherBase.position = CGPoint(x: 0, y: -25) // Position at bottom of launcher
-        
-        // Add shadow
-        launcherBase.shadowCastBitMask = 1
-        launcherBase.lightingBitMask = 1
+        guard let launcher = launcher else { return }
 
-        launcher?.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: 60, height: 60))
-        launcher?.physicsBody?.isDynamic = false
-        launcher?.physicsBody?.categoryBitMask = PhysicsCategory.launcher
-        launcher?.physicsBody?.collisionBitMask = PhysicsCategory.ball
-        launcher?.physicsBody?.restitution = 1.2 // Make it bouncy like the platform
-        launcher?.physicsBody?.friction = 0.2
+        // Physics setup
+        // Use texture physics for more accurate hit detection if it's not a box
+        launcher.physicsBody = SKPhysicsBody(texture: launcher.texture!, size: launcher.size)
+        launcher.physicsBody?.isDynamic = false
+        launcher.physicsBody?.categoryBitMask = PhysicsCategory.launcher
+        launcher.physicsBody?.collisionBitMask = PhysicsCategory.ball
+        launcher.physicsBody?.restitution = 0.5 
+        launcher.physicsBody?.friction = 0.2
 
-        if let launcher = launcher {
-            addChild(launcher)
-        }
+        addChild(launcher)
     }
 
     private func createBall() {
         let ballTexture = SKTexture(imageNamed: "ball")
+        // Set explicit size to prevent oversized sprites
         let ballSize = CGSize(width: 40, height: 40)
         ball = SKSpriteNode(texture: ballTexture, size: ballSize)
+        
+        // Ensure proper rendering without artifacts
+        ball?.texture?.filteringMode = .linear
 
         guard let ball = ball else { return }
 
         // Ball starts on the launcher
-        ball.position = CGPoint(x: 50, y: frame.height * 0.2 + 50)
+        // Ball starts (hidden/inside) at the launcher center
+        ball.position = CGPoint(x: 50, y: frame.height * 0.2)
 
-        // Physics setup
+        // Physics setup - use circular body matching the visual size
         ball.physicsBody = SKPhysicsBody(circleOfRadius: ballSize.width / 2)
         ball.physicsBody?.isDynamic = false // Static until launched
         ball.physicsBody?.categoryBitMask = PhysicsCategory.ball
         ball.physicsBody?.contactTestBitMask = PhysicsCategory.basket | PhysicsCategory.platform | PhysicsCategory.wall | PhysicsCategory.launcher
-        ball.physicsBody?.collisionBitMask = PhysicsCategory.wall | PhysicsCategory.platform | PhysicsCategory.basket | PhysicsCategory.launcher
+        ball.physicsBody?.collisionBitMask = PhysicsCategory.wall | PhysicsCategory.platform // REMOVED .basket and .launcher so it launches smoothly
         ball.physicsBody?.restitution = 0.7 // Bounciness
         ball.physicsBody?.friction = 0.2
         ball.physicsBody?.linearDamping = 0.1
@@ -127,8 +123,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func createPlatform() {
-        // Platform in the middle between launcher and basket
-        platform = SKSpriteNode(color: .black, size: CGSize(width: 100, height: 20))
+        // Platform in the middle between launcher and basket, using image asset "platform"
+        let platformTexture = SKTexture(imageNamed: "platform")
+        // Set explicit size to prevent oversized sprites
+        platform = SKSpriteNode(texture: platformTexture, size: CGSize(width: 100, height: 40))
         platform?.position = CGPoint(x: frame.midX, y: frame.height * 0.5)
 
         guard let platform = platform else { return }
@@ -143,69 +141,55 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func createBasket() {
-        // Basket at top right - realistic basket design
-        let basketWidth: CGFloat = 70
-        let basketHeight: CGFloat = 80
-        let rimThickness: CGFloat = 8
-        let wallThickness: CGFloat = 6
-
-        basket = SKSpriteNode()
+        // Basket using "net" asset
+        basket = SKSpriteNode(imageNamed: "net")
+        
+        // Position at top right
         basket?.position = CGPoint(x: frame.width - 100, y: frame.height * 0.8)
+        
+        // Size adjustment
+        basket?.size = CGSize(width: 100, height: 100)
+        
+        // Make translucent so we can see the ball inside
+        basket?.alpha = 0.8
 
         guard let basket = basket else { return }
 
-        // Top rim (wider opening)
-        let topRim = SKSpriteNode(color: .black, size: CGSize(width: basketWidth, height: rimThickness))
-        topRim.position = CGPoint(x: 0, y: basketHeight/2)
-        topRim.physicsBody = SKPhysicsBody(rectangleOf: topRim.size)
-        topRim.physicsBody?.isDynamic = false
-        topRim.physicsBody?.categoryBitMask = PhysicsCategory.wall
-        basket.addChild(topRim)
+        // REMOVED: texture-based physics body which blocked the ball
+        // basket.physicsBody = SKPhysicsBody(texture: basket.texture!, size: basket.size)
+        // basket.physicsBody?.isDynamic = false
+        // basket.physicsBody?.categoryBitMask = PhysicsCategory.wall 
+        
+        // INSTEAD: Create invisible collision bodies for the rim
+        
+        // Left Rim
+        let leftRim = SKSpriteNode(color: .clear, size: CGSize(width: 10, height: 10))
+        // Position relative to basket center - adjust based on visual "net" asset
+        leftRim.position = CGPoint(x: -35, y: 30) 
+        leftRim.physicsBody = SKPhysicsBody(circleOfRadius: 5)
+        leftRim.physicsBody?.isDynamic = false
+        leftRim.physicsBody?.categoryBitMask = PhysicsCategory.wall
+        basket.addChild(leftRim)
+        
+        // Right Rim
+        let rightRim = SKSpriteNode(color: .clear, size: CGSize(width: 10, height: 10))
+        rightRim.position = CGPoint(x: 35, y: 30)
+        rightRim.physicsBody = SKPhysicsBody(circleOfRadius: 5)
+        rightRim.physicsBody?.isDynamic = false
+        rightRim.physicsBody?.categoryBitMask = PhysicsCategory.wall
+        basket.addChild(rightRim)
 
-        // Left curved wall (angled inward)
-        let leftWallPath = UIBezierPath()
-        leftWallPath.move(to: CGPoint(x: 0, y: 0))
-        leftWallPath.addCurve(
-            to: CGPoint(x: -basketWidth/4, y: basketHeight/2),
-            controlPoint1: CGPoint(x: -wallThickness, y: basketHeight/4),
-            controlPoint2: CGPoint(x: -basketWidth/3, y: basketHeight/2)
-        )
-        let leftWall = SKShapeNode(path: leftWallPath.cgPath)
-        leftWall.strokeColor = .black
-        leftWall.lineWidth = wallThickness
-        leftWall.fillColor = .clear
-        leftWall.position = CGPoint(x: -basketWidth/2, y: -basketHeight/2)
-        leftWall.physicsBody = SKPhysicsBody(edgeLoopFrom: leftWallPath.cgPath)
-        leftWall.physicsBody?.isDynamic = false
-        leftWall.physicsBody?.categoryBitMask = PhysicsCategory.wall
-        basket.addChild(leftWall)
-
-        // Right curved wall (angled inward)
-        let rightWallPath = UIBezierPath()
-        rightWallPath.move(to: CGPoint(x: 0, y: 0))
-        rightWallPath.addCurve(
-            to: CGPoint(x: basketWidth/4, y: basketHeight/2),
-            controlPoint1: CGPoint(x: wallThickness, y: basketHeight/4),
-            controlPoint2: CGPoint(x: basketWidth/3, y: basketHeight/2)
-        )
-        let rightWall = SKShapeNode(path: rightWallPath.cgPath)
-        rightWall.strokeColor = .black
-        rightWall.lineWidth = wallThickness
-        rightWall.fillColor = .clear
-        rightWall.position = CGPoint(x: basketWidth/2, y: -basketHeight/2)
-        rightWall.physicsBody = SKPhysicsBody(edgeLoopFrom: rightWallPath.cgPath)
-        rightWall.physicsBody?.isDynamic = false
-        rightWall.physicsBody?.categoryBitMask = PhysicsCategory.wall
-        basket.addChild(rightWall)
-
-        // Bottom net (goal zone)
-        let netWidth: CGFloat = basketWidth/2
-        let bottom = SKSpriteNode(color: .black, size: CGSize(width: netWidth, height: rimThickness))
-        bottom.position = CGPoint(x: 0, y: -basketHeight/2)
-        bottom.physicsBody = SKPhysicsBody(rectangleOf: bottom.size)
-        bottom.physicsBody?.isDynamic = false
-        bottom.physicsBody?.categoryBitMask = PhysicsCategory.basket
-        basket.addChild(bottom)
+        // Add a sensor for scoring
+        // Positioned lower so the ball has to fall completely in
+        let goalSensor = SKSpriteNode(color: .clear, size: CGSize(width: basket.size.width * 0.4, height: 5))
+        goalSensor.position = CGPoint(x: 0, y: -basket.size.height * 0.2) // 40% down from center
+        goalSensor.physicsBody = SKPhysicsBody(rectangleOf: goalSensor.size)
+        goalSensor.physicsBody?.isDynamic = false
+        goalSensor.physicsBody?.categoryBitMask = PhysicsCategory.basket
+        goalSensor.physicsBody?.contactTestBitMask = PhysicsCategory.ball
+        goalSensor.physicsBody?.collisionBitMask = 0 // Sensor only
+        
+        basket.addChild(goalSensor)
 
         addChild(basket)
     }
@@ -246,39 +230,128 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         addChild(rightWall)
     }
 
-    // This is the score label & {metadata etc}
-    private func createScoreLabel() {
-        scoreLabel = SKLabelNode(fontNamed: "Arial")
-        scoreLabel?.fontSize = 36
-        scoreLabel?.fontColor = .black
-        scoreLabel?.position = CGPoint(x: frame.midX, y: frame.height - 100)
-        scoreLabel?.text = "Score: \(score)"
+    // Use a container for the scoreboard
 
-        if let scoreLabel = scoreLabel {
-            addChild(scoreLabel)
-        }
+    private func createScoreLabel() {
+        // Create Background
+        let scoreBoardWidth: CGFloat = 120 // Reduced from 160
+        let scoreBoardHeight: CGFloat = 50 // Reduced from 80
+        scoreBoard = SKShapeNode(rectOf: CGSize(width: scoreBoardWidth, height: scoreBoardHeight), cornerRadius: 10)
+        scoreBoard?.fillColor = .black
+        scoreBoard?.strokeColor = .white
+        scoreBoard?.lineWidth = 2
+        scoreBoard?.position = CGPoint(x: frame.midX, y: frame.height - 100)
+        scoreBoard?.zPosition = 100 // Ensure it's on top
+
+        guard let scoreBoard = scoreBoard else { return }
+
+        // Create "SCORE" Title Node
+        let titleLabel = SKLabelNode(fontNamed: "Arial-BoldMT")
+        titleLabel.text = "SCORE"
+        titleLabel.fontSize = 20
+        titleLabel.fontColor = .white
+        titleLabel.position = CGPoint(x: -15, y: 0) // Top half
+        titleLabel.verticalAlignmentMode = .center
+        scoreBoard.addChild(titleLabel)
+
+        // Create Dynamic Score Value Node
+        scoreLabel = SKLabelNode(fontNamed: "Arial-BoldMT")
+        scoreLabel?.text = "\(score)"
+        scoreLabel?.fontSize = 20 // Reduced size
+        scoreLabel?.fontColor = .white
+        scoreLabel?.position = CGPoint(x: 40, y: 0) // Bottom half
+        scoreLabel?.verticalAlignmentMode = .center
+        scoreBoard.addChild(scoreLabel!)
+
+        addChild(scoreBoard)
+    }
+
+    private func createFireButton() {
+        let btnWidth: CGFloat = 120
+        let btnHeight: CGFloat = 50
+        fireButton = SKShapeNode(rectOf: CGSize(width: btnWidth, height: btnHeight), cornerRadius: 10)
+        fireButton?.fillColor = .black
+        fireButton?.strokeColor = .white
+        fireButton?.lineWidth = 2
+        // Position Bottom Center: frame.midX
+        fireButton?.position = CGPoint(x: frame.midX, y: 80)
+        fireButton?.zPosition = 100
+        
+        guard let fireButton = fireButton else { return }
+        
+        let label = SKLabelNode(fontNamed: "Arial-BoldMT")
+        label.text = "FIRE"
+        label.fontSize = 20
+        label.fontColor = .white
+        label.verticalAlignmentMode = .center
+        fireButton.addChild(label)
+        
+        addChild(fireButton)
     }
 
     // MARK: - Touch Handling
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
+        
+        // Check if fire button is pressed
+        if let fireButton = fireButton, fireButton.contains(location) {
+            // FIRE LOGIC
+             if let ball = ball, !isLaunched {
+                // Launch the ball
+                ball.physicsBody?.isDynamic = true
+                isLaunched = true
 
-        if let ball = ball, !isLaunched {
-            // Launch the ball
-            ball.physicsBody?.isDynamic = true
-            isLaunched = true
-
-            // Calculate launch direction (upward and to the right toward basket)
-            let dx = location.x - ball.position.x
-            let dy = location.y - ball.position.y
-            let impulse = CGVector(dx: dx * 0.3, dy: dy * 0.3)
-            ball.physicsBody?.applyImpulse(impulse)
+                // Calculate launch vector based on CURRENT angle of launcher
+                if let launcher = launcher {
+                    // Use the rotation of the launcher but ADD back the correction to get the TRUE physics angle
+                    // Physics Angle = Visual Rotation + Correction
+                    let angle = launcher.zRotation + cannonVisualCorrection
+                    
+                    // Offset to spawn ball at muzzle (length of cannon barrel)
+                    // Cannon size is 80x80, so half is 40. Barrel tip is roughly 40 units out.
+                    let offsetDistance: CGFloat = 50.0 
+                    let offsetX = cos(angle) * offsetDistance
+                    let offsetY = sin(angle) * offsetDistance
+                    
+                    // Move ball to muzzle tip
+                    ball.position = CGPoint(x: launcher.position.x + offsetX, y: launcher.position.y + offsetY)
+                    
+                    // Impulse magnitude
+                    let power: CGFloat = 80.0
+                    
+                    let impulse = CGVector(dx: cos(angle) * power, dy: sin(angle) * power)
+                    ball.physicsBody?.applyImpulse(impulse)
+                }
+            }
+        } else {
+            // AIMING LOGIC
+            rotateCannon(to: location)
         }
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        // Can be used for trajectory preview
+        guard let touch = touches.first else { return }
+        let location = touch.location(in: self)
+        
+        // Only aim if NOT touching the button (simple check, though touchesMoved usually tracks the same touch)
+        // Ideally we check if the touch started on button, but separating regions is often enough.
+        if let fireButton = fireButton, !fireButton.contains(location) {
+             rotateCannon(to: location)
+        }
+    }
+    
+    private func rotateCannon(to location: CGPoint) {
+        guard let launcher = launcher else { return }
+        
+        let dx = location.x - launcher.position.x
+        let dy = location.y - launcher.position.y
+        let angle = atan2(dy, dx)
+        
+        // SpriteKit rotation is in radians.
+        // Assuming the cannon sprite points RIGHT by default:
+        // We SUBTRACT the correction because the asset is intrinsicly rotated "Positive" (CCW).
+        launcher.zRotation = angle - cannonVisualCorrection
     }
 
     // MARK: - Physics Contact Delegate
@@ -286,13 +359,24 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let collision = contact.bodyA.categoryBitMask | contact.bodyB.categoryBitMask
 
         if collision == PhysicsCategory.ball | PhysicsCategory.basket {
-            // Ball scored in basket!
-            score += 1
-            scoreLabel?.text = "Score: \(score)"
-
-            // Reset level
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                self.resetLevel()
+            // Check if ball is moving downwards to count as a score
+            // We need to access the ball's physics body. 
+            // Since we don't know if bodyA or bodyB is the ball, we check both or just use the `ball` property if reliable.
+            // Safer to check the contact bodies directly.
+            
+            let ballBody = (contact.bodyA.categoryBitMask == PhysicsCategory.ball) ? contact.bodyA : contact.bodyB
+            
+            if let velocity = ballBody.velocity as CGVector?, velocity.dy < 0 {
+                 print("SCORING: Ball velocity dy is \(velocity.dy) (negative, so valid)")
+                 // Ball scored in basket!
+                score += 1
+                scoreLabel?.text = "\(score)"
+                print("SCORE UPDATED: \(score)")
+                
+                // Allow ball to fall to ground to trigger reset
+                // Reset logic is handled by floor collision checks
+            } else {
+                print("IGNORED SCORE: Ball velocity dy is \(ballBody.velocity.dy) (moving up)")
             }
         }
 

@@ -30,7 +30,7 @@ class GameViewController: UIViewController {
             view.ignoresSiblingOrder = true
             view.showsFPS = true
             view.showsNodeCount = true
-            view.showsPhysics = true // Shows physics bodies
+            // view.showsPhysics = true // Commented out to remove physics outlines
         }
     }
 
