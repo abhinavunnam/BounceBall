@@ -5,8 +5,7 @@ class LevelSelectScene: SKScene {
     
     // MARK: - Properties
     private let levelsPerRow = 3
-    private let buttonSize = CGSize(width: 80, height: 80)
-    private let spacing: CGFloat = 20
+    // Removed fixed properties to calculate dynamically in createLevelGrid
     
     override func didMove(to view: SKView) {
         backgroundColor = .white
@@ -27,29 +26,37 @@ class LevelSelectScene: SKScene {
     }
     
     private func createLevelGrid() {
-        let totalLevels = 5 // Defined in LevelData, hardcoded here for simplicity or could be LevelData.levels.count
+        let totalLevels = LevelData.levels.count // Dynamic level count
         let highestUnlocked = GameData.shared.highestUnlockedLevelIndex
         
         // Calculate Grid
-        let startX = frame.midX - (buttonSize.width + spacing)
+        // Use 80% of screen width for the grid
+        let availableWidth = frame.width * 0.8
+        let spacing = availableWidth * 0.05
+        let buttonWidth = (availableWidth - (spacing * CGFloat(levelsPerRow - 1))) / CGFloat(levelsPerRow)
+        let buttonSize = CGSize(width: buttonWidth, height: buttonWidth)
+        
+        // Center the grid
+        let gridWidth = (buttonWidth * CGFloat(levelsPerRow)) + (spacing * CGFloat(levelsPerRow - 1))
+        let startX = frame.midX - (gridWidth / 2) + (buttonWidth / 2)
         let startY = frame.height * 0.65
         
         for i in 0..<totalLevels {
             let column = i % levelsPerRow
             let row = i / levelsPerRow
             
-            let x = startX + CGFloat(column) * (buttonSize.width + spacing)
+            let x = startX + CGFloat(column) * (buttonWidth + spacing)
             let y = startY - CGFloat(row) * (buttonSize.height + spacing)
             
             let levelIndex = i
             let isUnlocked = levelIndex <= highestUnlocked
             
-            createLevelButton(index: levelIndex, x: x, y: y, isUnlocked: isUnlocked)
+            createLevelButton(index: levelIndex, x: x, y: y, isUnlocked: isUnlocked, size: buttonSize)
         }
     }
     
-    private func createLevelButton(index: Int, x: CGFloat, y: CGFloat, isUnlocked: Bool) {
-        let button = SKShapeNode(rectOf: buttonSize, cornerRadius: 15)
+    private func createLevelButton(index: Int, x: CGFloat, y: CGFloat, isUnlocked: Bool, size: CGSize) {
+        let button = SKShapeNode(rectOf: size, cornerRadius: 15)
         button.position = CGPoint(x: x, y: y)
         button.lineWidth = 2
         button.name = "Level_\(index)"

@@ -4,16 +4,16 @@ import Foundation
 class GameData {
     static let shared = GameData()
     
-    private let keyHighestLevelUntructed = "highestLevelUnlocked"
+    private let keyHighestLevelUnlocked = "highestLevelUnlocked"
     
     // Default to Level 1 unlocked (index 0)
     var highestUnlockedLevelIndex: Int {
         get {
             // Default is 0 if not key exists
-            return UserDefaults.standard.integer(forKey: keyHighestLevelUntructed)
+            return UserDefaults.standard.integer(forKey: keyHighestLevelUnlocked)
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: keyHighestLevelUntructed)
+            UserDefaults.standard.set(newValue, forKey: keyHighestLevelUnlocked)
         }
     }
     

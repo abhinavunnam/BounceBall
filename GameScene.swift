@@ -1,17 +1,9 @@
-// ==========================================
-// BOUNCE BALL GAME - Complete Game Scene Code
-// ==========================================
 //
-// INSTRUCTIONS:
-// 1. Open Xcode
-// 2. File → New → Project → iOS → Game
-// 3. Product Name: BounceBallGame
-// 4. Game Technology: SpriteKit
-// 5. Save it anywhere
-// 6. Replace the generated GameScene.swift with this code
-// 7. Run!
+//  GameScene.swift
+//  BounceBallGame
 //
-// ==========================================
+//  Main Gameplay Scene
+//
 
 import SpriteKit
 import GameplayKit
@@ -27,6 +19,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     private var scoreLabel: SKLabelNode?
     private var scoreBoard: SKShapeNode?
     private var fireButton: SKShapeNode?
+    private var backButton: SKLabelNode?
     private var score = 0
     private var isLaunched = false
     private var isResetting = false
@@ -71,6 +64,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // UI Elements
         createScoreLabel()
         createFireButton()
+        createBackButton()
         createLevelLabel()
         
         // Initial Game Objects (Created once, repositioned per level)
@@ -97,13 +91,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     private func createLauncher() {
         // Launcher using "canon" asset
         launcher = SKSpriteNode(imageNamed: "canon")
-        // Position at bottom left
-        launcher?.position = CGPoint(x: 50, y: frame.height * 0.2)
+        // Position at bottom left (15% width)
+        launcher?.position = CGPoint(x: frame.width * 0.15, y: frame.height * 0.2)
         // Scale down if necessary, though SKTexture usually handles it.
         // Assuming canon needs to be roughly same size as before or appropriate for the asset.
         // Let's set a size to ensure it's not huge, or we can trust the asset size.
         // Let's start with a reasonable size similar to previous box
-        launcher?.size = CGSize(width: 80, height: 80)
+        let size = frame.width * 0.2 // 20% of screen width
+        launcher?.size = CGSize(width: size, height: size)
 
         guard let launcher = launcher else { return }
 
@@ -122,7 +117,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     private func createBall() {
         let ballTexture = SKTexture(imageNamed: "ball")
         // Set explicit size to prevent oversized sprites
-        let ballSize = CGSize(width: 40, height: 40)
+        let ballRadius = frame.width * 0.1 // 10% width
+        let ballSize = CGSize(width: ballRadius, height: ballRadius)
         ball = SKSpriteNode(texture: ballTexture, size: ballSize)
         
         // Ensure proper rendering without artifacts
@@ -157,7 +153,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // Platform in the middle between launcher and basket, using image asset "platform"
         let platformTexture = SKTexture(imageNamed: "platform")
         // Set explicit size to prevent oversized sprites
-        platform = SKSpriteNode(texture: platformTexture, size: CGSize(width: 100, height: 40))
+        let pWidth = frame.width * 0.25
+        let pHeight = frame.height * 0.05
+        platform = SKSpriteNode(texture: platformTexture, size: CGSize(width: pWidth, height: pHeight))
         platform?.position = CGPoint(x: frame.midX, y: frame.height * 0.5)
 
         guard let platform = platform else { return }
@@ -179,7 +177,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         levelLabel?.fontColor = .black
         // Position top left, moved down slightly
         levelLabel?.horizontalAlignmentMode = .left
-        levelLabel?.position = CGPoint(x: 20, y: frame.height - 60) // Lowered from -40
+        levelLabel?.position = CGPoint(x: frame.width * 0.05, y: frame.height * 0.9) // Top left with 5% margin
         addChild(levelLabel!)
     }
     
@@ -231,10 +229,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         basket = SKSpriteNode(imageNamed: "net")
         
         // Position at top right
-        basket?.position = CGPoint(x: frame.width - 100, y: frame.height * 0.8)
+        basket?.position = CGPoint(x: frame.width * 0.85, y: frame.height * 0.8)
         
         // Size adjustment
-        basket?.size = CGSize(width: 100, height: 100)
+        let bSize = frame.width * 0.25
+        basket?.size = CGSize(width: bSize, height: bSize)
         
         // Make translucent so we can see the ball inside
         basket?.alpha = 0.8 // More translucent
@@ -242,11 +241,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
 
         guard let basket = basket else { return }
 
-        // REMOVED: texture-based physics body which blocked the ball
-        // basket.physicsBody = SKPhysicsBody(texture: basket.texture!, size: basket.size)
-        // basket.physicsBody?.isDynamic = false
-        // basket.physicsBody?.categoryBitMask = PhysicsCategory.wall 
-        
         // INSTEAD: Create invisible collision bodies for the rim
         
         // Left Rim
@@ -382,14 +376,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func createFireButton() {
-        let btnWidth: CGFloat = 120
+        let btnWidth: CGFloat = frame.width * 0.3
         let btnHeight: CGFloat = 50
         fireButton = SKShapeNode(rectOf: CGSize(width: btnWidth, height: btnHeight), cornerRadius: 10)
         fireButton?.fillColor = .black
         fireButton?.strokeColor = .white
         fireButton?.lineWidth = 2
         // Position Bottom Center: frame.midX
-        fireButton?.position = CGPoint(x: frame.midX, y: 80)
+        fireButton?.position = CGPoint(x: frame.midX, y: frame.height * 0.1)
         fireButton?.zPosition = 100
         
         guard let fireButton = fireButton else { return }
@@ -403,11 +397,32 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         addChild(fireButton)
     }
+    
+    private func createBackButton() {
+        backButton = SKLabelNode(fontNamed: "Arial-BoldMT")
+        backButton?.text = "← BACK"
+        backButton?.fontSize = 20
+        backButton?.fontColor = .black
+        backButton?.position = CGPoint(x: frame.width * 0.95, y: frame.height * 0.90)
+        backButton?.horizontalAlignmentMode = .right
+        backButton?.name = "backButton"
+        backButton?.zPosition = 100
+        
+        if let backButton = backButton {
+            addChild(backButton)
+        }
+    }
 
     // MARK: - Touch Handling
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
+        
+        // Check if back button is pressed
+        if let backButton = backButton, backButton.contains(location) {
+            transitionToLevelSelect()
+            return
+        }
         
         // Check if fire button is pressed
         if let fireButton = fireButton, fireButton.contains(location) {
@@ -509,7 +524,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                 score += 1
                 
                 // Play Score Sound
-                // Play Score Sound
                 if let player = scoreSoundPlayer {
                      if player.isPlaying { player.stop(); player.currentTime = 0 }
                      player.play()
@@ -547,7 +561,6 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
 
         if collision == PhysicsCategory.ball | PhysicsCategory.platform {
             // Ball hit platform - can add bounce effect or particles
-            // Play Bounce Sound
             // Play Bounce Sound
             if let player = bounceSoundPlayer {
                  if player.isPlaying { player.stop(); player.currentTime = 0 }
@@ -663,5 +676,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         let transition = SKTransition.crossFade(withDuration: 0.5)
         view?.presentScene(completeScene, transition: transition)
+    }
+    
+    private func transitionToLevelSelect() {
+        let levelSelectScene = LevelSelectScene(size: self.size)
+        levelSelectScene.scaleMode = .aspectFill
+        
+        let transition = SKTransition.moveIn(with: .left, duration: 0.3)
+        view?.presentScene(levelSelectScene, transition: transition)
     }
 }

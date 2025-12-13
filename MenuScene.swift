@@ -33,17 +33,21 @@ class MenuScene: SKScene {
     
     private func createLogoElements() {
         // Decorative Ball
+        let ballSize = frame.width * 0.15
+        let ballOffset = frame.width * 0.1
+        
         let ball = SKSpriteNode(imageNamed: "ball")
-        ball.size = CGSize(width: 60, height: 60)
-        ball.position = CGPoint(x: frame.midX - 40, y: frame.height * 0.65)
+        ball.size = CGSize(width: ballSize, height: ballSize)
+        ball.position = CGPoint(x: frame.midX - ballOffset, y: frame.height * 0.65)
         ball.zRotation = .pi / 4
         ball.name = "logoBall"
         addChild(ball)
         
         // Decorative Net
+        let netSize = frame.width * 0.2
         let net = SKSpriteNode(imageNamed: "net")
-        net.size = CGSize(width: 80, height: 80)
-        net.position = CGPoint(x: frame.midX + 40, y: frame.height * 0.6)
+        net.size = CGSize(width: netSize, height: netSize)
+        net.position = CGPoint(x: frame.midX + ballOffset, y: frame.height * 0.6)
         net.alpha = 0.8
         net.zRotation = -0.1
         net.name = "logoNet"
@@ -86,8 +90,9 @@ class MenuScene: SKScene {
     
     private func createStartButton() {
         // Button background
-        let buttonWidth: CGFloat = 200
-        let buttonHeight: CGFloat = 60
+        // Button background
+        let buttonWidth: CGFloat = frame.width * 0.5
+        let buttonHeight: CGFloat = frame.height * 0.08
         
         startButton = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 15)
         startButton?.fillColor = .black
