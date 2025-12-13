@@ -100,10 +100,8 @@ class MenuScene: SKScene {
         // Button label
         startButtonLabel = SKLabelNode(fontNamed: "Arial-BoldMT")
         
-        let highestLevel = GameData.shared.highestUnlockedLevelIndex
-        let buttonText = highestLevel > 0 ? "CONTINUE" : "START GAME"
-        
-        startButtonLabel?.text = buttonText
+        // Simplified to just "PLAY" which leads to Level Select
+        startButtonLabel?.text = "PLAY"
         startButtonLabel?.fontSize = 24
         startButtonLabel?.fontColor = .white
         startButtonLabel?.verticalAlignmentMode = .center
@@ -167,13 +165,11 @@ class MenuScene: SKScene {
     }
     
     private func transitionToGame() {
-        let gameScene = GameScene(size: self.size)
-        gameScene.scaleMode = .aspectFill
+        let levelSelectScene = LevelSelectScene(size: self.size)
+        levelSelectScene.scaleMode = .aspectFill
         
-        // Load the highest unlocked level
-        gameScene.startingLevelIndex = GameData.shared.highestUnlockedLevelIndex
-        
-        let transition = SKTransition.fade(with: .white, duration: 1.0)
-        self.view?.presentScene(gameScene, transition: transition)
+        // Transition to Level Select
+        let transition = SKTransition.moveIn(with: .right, duration: 0.5)
+        self.view?.presentScene(levelSelectScene, transition: transition)
     }
 }
