@@ -15,6 +15,7 @@
 
 import SpriteKit
 import GameplayKit
+import AVFoundation
 
 class GameScene: SKScene, SKPhysicsContactDelegate {
 
@@ -39,6 +40,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     // Platform Movement
     private var platformDirection: CGFloat = 1.0 // 1 for right, -1 for left
     
+    // Audio
+    var fireSoundPlayer: AVAudioPlayer?
+    var bounceSoundPlayer: AVAudioPlayer?
+    var scoreSoundPlayer: AVAudioPlayer?
+    
     // Correction for visual asset rotation (Asset points slightly Up/Left, so we subtract to aligning Right)
     // Adjust this if the cannon still looks off.
     private let cannonVisualCorrection: CGFloat = .pi / 8 // Approx 22.5 degrees
@@ -56,7 +62,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     // MARK: - Scene Lifecycle
     override func didMove(to view: SKView) {
         setupPhysics()
+
         setupScene()
+        setupSounds()
         
         createWalls()
         
@@ -429,6 +437,12 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                     
                     let impulse = CGVector(dx: cos(angle) * power, dy: sin(angle) * power)
                     ball.physicsBody?.applyImpulse(impulse)
+                    
+                    // Play Fire Sound
+                    if let player = fireSoundPlayer {
+                        if player.isPlaying { player.stop(); player.currentTime = 0 }
+                        player.play()
+                    }
                 }
             }
         } else {
@@ -491,8 +505,15 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             
             if let velocity = ballBody.velocity as CGVector?, velocity.dy < 0 {
                  print("SCORING: Ball velocity dy is \(velocity.dy) (negative, so valid)")
-                 // Ball scored in basket!
+                // Ball scored in basket!
                 score += 1
+                
+                // Play Score Sound
+                // Play Score Sound
+                if let player = scoreSoundPlayer {
+                     if player.isPlaying { player.stop(); player.currentTime = 0 }
+                     player.play()
+                }
                 
                 // Show progress
                 if let config = currentLevelConfig {
@@ -501,6 +522,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                      // Check Level Completion
                      if score >= config.targetScore {
                          print("LEVEL COMPLETE!")
+                         
+                         // Save Progress
+                         GameData.shared.unlockNextLevel(currentLevelIndex: self.currentLevelIndex)
                          
                          // Transition to Level Complete Screen
                          DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -523,6 +547,12 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
 
         if collision == PhysicsCategory.ball | PhysicsCategory.platform {
             // Ball hit platform - can add bounce effect or particles
+            // Play Bounce Sound
+            // Play Bounce Sound
+            if let player = bounceSoundPlayer {
+                 if player.isPlaying { player.stop(); player.currentTime = 0 }
+                 player.play()
+            }
         }
 
         if collision == PhysicsCategory.ball | PhysicsCategory.wall {
@@ -582,6 +612,49 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
 
+    
+    private func setupSounds() {
+        if let path = Bundle.main.path(forResource: "fire", ofType: "mp3") {
+            let url = URL(fileURLWithPath: path)
+            do {
+                fireSoundPlayer = try AVAudioPlayer(contentsOf: url)
+                fireSoundPlayer?.prepareToPlay()
+                print("AUDIO: fire.mp3 loaded successfully")
+            } catch {
+                print("AUDIO ERROR: Could not load fire.mp3 file - \(error)")
+            }
+        } else {
+             print("AUDIO ERROR: fire.mp3 not found in Bundle.")
+        }
+        
+        // BOUNCE
+        if let path = Bundle.main.path(forResource: "bounce", ofType: "mp3") {
+            let url = URL(fileURLWithPath: path)
+            do {
+                bounceSoundPlayer = try AVAudioPlayer(contentsOf: url)
+                bounceSoundPlayer?.prepareToPlay()
+                print("AUDIO: bounce.mp3 loaded successfully")
+            } catch {
+                print("AUDIO ERROR: Could not load bounce.mp3 file - \(error)")
+            }
+        } else {
+             print("AUDIO ERROR: bounce.mp3 not found in Bundle.")
+        }
+        
+        // SCORE
+        if let path = Bundle.main.path(forResource: "score", ofType: "mp3") {
+            let url = URL(fileURLWithPath: path)
+            do {
+                scoreSoundPlayer = try AVAudioPlayer(contentsOf: url)
+                scoreSoundPlayer?.prepareToPlay()
+                print("AUDIO: score.mp3 loaded successfully")
+            } catch {
+                print("AUDIO ERROR: Could not load score.mp3 file - \(error)")
+            }
+        } else {
+             print("AUDIO ERROR: score.mp3 not found in Bundle.")
+        }
+    }
     
     private func goToLevelComplete() {
         let completeScene = LevelCompleteScene(size: self.size)

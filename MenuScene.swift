@@ -17,6 +17,7 @@ class MenuScene: SKScene {
     
     // MARK: - Scene Lifecycle
     override func didMove(to view: SKView) {
+        print("--- APP LAUNCHED: MenuScene Loaded ---")
         setupScene()
         createLogoElements()
         createTitle()
@@ -98,7 +99,11 @@ class MenuScene: SKScene {
         
         // Button label
         startButtonLabel = SKLabelNode(fontNamed: "Arial-BoldMT")
-        startButtonLabel?.text = "START GAME"
+        
+        let highestLevel = GameData.shared.highestUnlockedLevelIndex
+        let buttonText = highestLevel > 0 ? "CONTINUE" : "START GAME"
+        
+        startButtonLabel?.text = buttonText
         startButtonLabel?.fontSize = 24
         startButtonLabel?.fontColor = .white
         startButtonLabel?.verticalAlignmentMode = .center
@@ -164,6 +169,9 @@ class MenuScene: SKScene {
     private func transitionToGame() {
         let gameScene = GameScene(size: self.size)
         gameScene.scaleMode = .aspectFill
+        
+        // Load the highest unlocked level
+        gameScene.startingLevelIndex = GameData.shared.highestUnlockedLevelIndex
         
         let transition = SKTransition.fade(with: .white, duration: 1.0)
         self.view?.presentScene(gameScene, transition: transition)

@@ -9,11 +9,15 @@
 import UIKit
 import SpriteKit
 import GameplayKit
+import GameKit // Import GameKit
 
 class GameViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        // Authenticate Game Center Player
+        authenticateLocalPlayer()
 
         if let view = self.view as! SKView? {
             view.isUserInteractionEnabled = true
@@ -31,6 +35,19 @@ class GameViewController: UIViewController {
             view.showsFPS = true
             view.showsNodeCount = true
             // view.showsPhysics = true // Commented out to remove physics outlines
+        }
+    }
+    
+    func authenticateLocalPlayer() {
+        let localPlayer = GKLocalPlayer.local
+        localPlayer.authenticateHandler = { viewController, error in
+            if let vc = viewController {
+                self.present(vc, animated: true)
+            } else if localPlayer.isAuthenticated {
+                print("Game Center: Authenticated successfully!")
+            } else {
+                print("Game Center: Authentication failed - \(String(describing: error?.localizedDescription))")
+            }
         }
     }
 
