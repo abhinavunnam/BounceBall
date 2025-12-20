@@ -65,7 +65,7 @@ class MenuScene: SKScene {
     private func createTitle() {
         // Main title
         titleLabel = SKLabelNode(fontNamed: "Arial-BoldMT")
-        titleLabel?.text = "BOUNCE BALL"
+        titleLabel?.text = "CANON BALL"
         titleLabel?.fontSize = 48
         titleLabel?.fontColor = .black
         titleLabel?.position = CGPoint(x: frame.midX, y: frame.height * 0.45)
@@ -77,7 +77,7 @@ class MenuScene: SKScene {
         
         // Subtitle
         subtitleLabel = SKLabelNode(fontNamed: "Arial")
-        subtitleLabel?.text = "Basketball Challenge"
+        subtitleLabel?.text = "Aiming Challenge"
         subtitleLabel?.fontSize = 20
         subtitleLabel?.fontColor = .gray
         subtitleLabel?.position = CGPoint(x: frame.midX, y: frame.height * 0.40)
