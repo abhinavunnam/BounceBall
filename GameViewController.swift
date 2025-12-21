@@ -32,8 +32,8 @@ class GameViewController: UIViewController {
 
             // Debug options (optional - remove for production)
             view.ignoresSiblingOrder = true
-            view.showsFPS = true
-            view.showsNodeCount = true
+            view.showsFPS = false
+            view.showsNodeCount = false
             // view.showsPhysics = true // Commented out to remove physics outlines
         }
     }
