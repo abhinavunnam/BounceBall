@@ -71,6 +71,56 @@ struct LevelData {
             isPlatformMoving: true,
             platformMoveSpeed: 3.5, // Fast
             targetScore: 1
+        ),
+
+        // Level 6: Speed Demon - Fast moving platform
+        LevelConfiguration(
+            levelNumber: 6,
+            basketPosition: CGPoint(x: 0.85, y: 0.7),
+            platformPosition: CGPoint(x: 0.5, y: 0.4),
+            isPlatformMoving: true,
+            platformMoveSpeed: 5.0, // Very Fast
+            targetScore: 1
+        ),
+
+        // Level 7: The Squeeze - Basket tucked in corner
+        LevelConfiguration(
+            levelNumber: 7,
+            basketPosition: CGPoint(x: 0.9, y: 0.6), // Top right corner
+            platformPosition: CGPoint(x: 0.5, y: 0.6),
+            isPlatformMoving: false,
+            platformMoveSpeed: 0,
+            targetScore: 1
+        ),
+
+        // Level 8: Rhythm - Moderate speed, trickier angle
+        LevelConfiguration(
+            levelNumber: 8,
+            basketPosition: CGPoint(x: 0.2, y: 0.5), // Low Left
+            platformPosition: CGPoint(x: 0.6, y: 0.6), // Low Right
+            isPlatformMoving: true,
+            platformMoveSpeed: 3.0,
+            targetScore: 1
+        ),
+
+        // Level 9: Long Shot - Cross map
+        LevelConfiguration(
+            levelNumber: 9,
+            basketPosition: CGPoint(x: 0.8, y: 0.3), // Top Right
+            platformPosition: CGPoint(x: 0.5, y: 0.5), // Low Left
+            isPlatformMoving: false,
+            platformMoveSpeed: 6,
+            targetScore: 1
+        ),
+
+        // Level 10: The Masterpiece - Fast platform, awkward angle
+        LevelConfiguration(
+            levelNumber: 10,
+            basketPosition: CGPoint(x: 0.5, y: 0.5), // Top Center
+            platformPosition: CGPoint(x: 0.5, y: 0.7), // Center
+            isPlatformMoving: true,
+            platformMoveSpeed: 6.0, // Maximum speed
+            targetScore: 1
         )
     ]
 }
