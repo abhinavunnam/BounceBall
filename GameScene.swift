@@ -88,16 +88,20 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         scaleMode = .aspectFill
     }
 
+    // Scaling Helper that Caps at 1.5x to prevent huge objects on iPad
+    var gameScale: CGFloat {
+        return min(frame.width / 390.0, 1.5)
+    }
+
     private func createLauncher() {
         // Launcher using "canon" asset
         launcher = SKSpriteNode(imageNamed: "canon")
-        // Position at bottom left (15% width)
+        // Position at bottom left (15% width check is okay for position, but maybe size separate)
         launcher?.position = CGPoint(x: frame.width * 0.15, y: frame.height * 0.2)
-        // Scale down if necessary, though SKTexture usually handles it.
-        // Assuming canon needs to be roughly same size as before or appropriate for the asset.
-        // Let's set a size to ensure it's not huge, or we can trust the asset size.
-        // Let's start with a reasonable size similar to previous box
-        let size = frame.width * 0.2 // 20% of screen width
+        
+        // Scale size using gameScale instead of raw width percentage
+        // Base size on iPhone was approx 80 (width * 0.2 of 390 is ~78)
+        let size = 80.0 * gameScale
         launcher?.size = CGSize(width: size, height: size)
 
         guard let launcher = launcher else { return }
@@ -116,8 +120,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private func createBall() {
         let ballTexture = SKTexture(imageNamed: "ball")
-        // Set explicit size to prevent oversized sprites
-        let ballRadius = frame.width * 0.1 // 10% width
+        // Use gameScale. Base radius approx 40 (width * 0.1 of 390 -> 39)
+        let ballRadius = 40.0 * gameScale
         let ballSize = CGSize(width: ballRadius, height: ballRadius)
         ball = SKSpriteNode(texture: ballTexture, size: ballSize)
         
@@ -129,7 +133,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // Ball starts on the launcher
         // Position ball at the muzzle tip based on initial cannon rotation (0 + correction)
         let initialAngle = (launcher?.zRotation ?? 0) + cannonVisualCorrection
-        let offsetDistance: CGFloat = 50.0
+        
+        // Scale offset distance using gameScale
+        let offsetDistance: CGFloat = 50.0 * gameScale
+        
         let lp = launcher?.position ?? CGPoint(x: 50, y: frame.height * 0.2)
         let bx = lp.x + cos(initialAngle) * offsetDistance
         let by = lp.y + sin(initialAngle) * offsetDistance
@@ -153,8 +160,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // Platform in the middle between launcher and basket, using image asset "platform"
         let platformTexture = SKTexture(imageNamed: "platform")
         // Set explicit size to prevent oversized sprites
-        let pWidth = frame.width * 0.25
-        let pHeight = frame.height * 0.05
+        // Use gameScale. Base size approx 100x40
+        let pWidth = 100.0 * gameScale
+        let pHeight = 40.0 * gameScale
         platform = SKSpriteNode(texture: platformTexture, size: CGSize(width: pWidth, height: pHeight))
         platform?.position = CGPoint(x: frame.midX, y: frame.height * 0.5)
 
@@ -231,8 +239,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // Position at top right
         basket?.position = CGPoint(x: frame.width * 0.85, y: frame.height * 0.8)
         
-        // Size adjustment
-        let bSize = frame.width * 0.25
+        // Size adjustment using gameScale
+        // Base size on iPhone was approx 100 (width * 0.25 of 390 is ~97)
+        let bSize = 100.0 * gameScale
         basket?.size = CGSize(width: bSize, height: bSize)
         
         // Make translucent so we can see the ball inside
@@ -242,29 +251,36 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         guard let basket = basket else { return }
 
         // INSTEAD: Create invisible collision bodies for the rim
+        // Calculate offsets based on actual basket size
+        let halfWidth = basket.size.width / 2
+        let rimOffset = halfWidth * 0.7 // 70% from center
+        let rimY = basket.size.height * 0.3 // 30% up from center
         
         // Left Rim
         let leftRim = SKSpriteNode(color: .clear, size: CGSize(width: 10, height: 10))
-        // Position relative to basket center - adjust based on visual "net" asset
-        leftRim.position = CGPoint(x: -35, y: 30) 
-        leftRim.physicsBody = SKPhysicsBody(circleOfRadius: 5)
+        leftRim.position = CGPoint(x: -rimOffset, y: rimY)
+        leftRim.physicsBody = SKPhysicsBody(circleOfRadius: 5) // Small collision point
         leftRim.physicsBody?.isDynamic = false
         leftRim.physicsBody?.categoryBitMask = PhysicsCategory.wall
         basket.addChild(leftRim)
         
         // Right Rim
         let rightRim = SKSpriteNode(color: .clear, size: CGSize(width: 10, height: 10))
-        rightRim.position = CGPoint(x: 35, y: 30)
+        rightRim.position = CGPoint(x: rimOffset, y: rimY)
         rightRim.physicsBody = SKPhysicsBody(circleOfRadius: 5)
         rightRim.physicsBody?.isDynamic = false
         rightRim.physicsBody?.categoryBitMask = PhysicsCategory.wall
         basket.addChild(rightRim)
         
         // Net Funnel Walls (to make ball bounce inside)
+        // Adjust these relative to size
+        let netHeight = basket.size.height * 0.6
+        let netX = halfWidth * 0.85 // Slightly wider than rims to form funnel
+        
         // Left Net Wall (Angled)
-        let leftNetSize = CGSize(width: 8, height: 60)
+        let leftNetSize = CGSize(width: 8, height: netHeight)
         let leftNet = SKSpriteNode(color: .clear, size: leftNetSize)
-        leftNet.position = CGPoint(x: -42, y: -5) // Shifted left (was -38)
+        leftNet.position = CGPoint(x: -netX, y: -5)
         leftNet.zRotation = 0.3 
         leftNet.physicsBody = SKPhysicsBody(rectangleOf: leftNetSize)
         leftNet.physicsBody?.isDynamic = false
@@ -272,9 +288,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         basket.addChild(leftNet)
         
         // Right Net Wall (Angled)
-        let rightNetSize = CGSize(width: 8, height: 60)
+        let rightNetSize = CGSize(width: 8, height: netHeight)
         let rightNet = SKSpriteNode(color: .clear, size: rightNetSize)
-        rightNet.position = CGPoint(x: 34, y: -5) // Shifted left (was 38)
+        rightNet.position = CGPoint(x: netX, y: -5)
         rightNet.zRotation = -0.3 
         rightNet.physicsBody = SKPhysicsBody(rectangleOf: rightNetSize)
         rightNet.physicsBody?.isDynamic = false
@@ -284,7 +300,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // Add a sensor for scoring
         // Positioned lower so the ball has to fall completely in
         let goalSensor = SKSpriteNode(color: .clear, size: CGSize(width: basket.size.width * 0.4, height: 5))
-        goalSensor.position = CGPoint(x: 0, y: -basket.size.height * 0.2) // 40% down from center
+        goalSensor.position = CGPoint(x: 0, y: -basket.size.height * 0.2) // 20% down from center
         goalSensor.physicsBody = SKPhysicsBody(rectangleOf: goalSensor.size)
         goalSensor.physicsBody?.isDynamic = false
         goalSensor.physicsBody?.categoryBitMask = PhysicsCategory.basket
@@ -336,13 +352,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
 
     private func createScoreLabel() {
         // Create Background - Expanded to provide more space
-        let scoreBoardWidth: CGFloat = 160 // Expanded
-        let scoreBoardHeight: CGFloat = 50 
-        scoreBoard = SKShapeNode(rectOf: CGSize(width: scoreBoardWidth, height: scoreBoardHeight), cornerRadius: 10)
+        let scoreBoardWidth: CGFloat = 160.0 * gameScale
+        let scoreBoardHeight: CGFloat = 50.0 * gameScale
+        scoreBoard = SKShapeNode(rectOf: CGSize(width: scoreBoardWidth, height: scoreBoardHeight), cornerRadius: 10 * gameScale)
         scoreBoard?.fillColor = .black
         scoreBoard?.strokeColor = .white
-        scoreBoard?.lineWidth = 2
-        scoreBoard?.position = CGPoint(x: frame.midX, y: frame.height - 100)
+        scoreBoard?.lineWidth = 2 * gameScale
+        scoreBoard?.position = CGPoint(x: frame.midX, y: frame.height - (100 * gameScale))
         scoreBoard?.zPosition = 100 
 
         guard let scoreBoard = scoreBoard else { return }
@@ -350,10 +366,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // Create "SCORE" Title Node
         let titleLabel = SKLabelNode(fontNamed: "Arial-BoldMT")
         titleLabel.text = "SCORE"
-        titleLabel.fontSize = 20
+        titleLabel.fontSize = 20 * gameScale
         titleLabel.fontColor = .white
         titleLabel.horizontalAlignmentMode = .left // Align left
-        titleLabel.position = CGPoint(x: -scoreBoardWidth/2 + 15, y: -7) 
+        titleLabel.position = CGPoint(x: -scoreBoardWidth/2 + (15 * gameScale), y: -7 * gameScale) 
         scoreBoard.addChild(titleLabel)
 
         // Create Dynamic Score Value Node
@@ -363,12 +379,12 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         } else {
              scoreLabel?.text = "0/0"
         }
-        scoreLabel?.fontSize = 20 
+        scoreLabel?.fontSize = 20 * gameScale
         scoreLabel?.fontColor = .white
         
         // Move "0/t" to the right for space
         scoreLabel?.horizontalAlignmentMode = .right 
-        scoreLabel?.position = CGPoint(x: scoreBoardWidth/2 - 15, y: -7)
+        scoreLabel?.position = CGPoint(x: scoreBoardWidth/2 - (15 * gameScale), y: -7 * gameScale)
         
         scoreBoard.addChild(scoreLabel!)
 
@@ -439,8 +455,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                     let angle = launcher.zRotation + cannonVisualCorrection
                     
                     // Offset to spawn ball at muzzle (length of cannon barrel)
-                    // Cannon size is 80x80, so half is 40. Barrel tip is roughly 40 units out.
-                    let offsetDistance: CGFloat = 50.0 
+                    // Cannon size is 80x80 (scaled), so barrel tip distance must scale.
+                    // Scale offset distance based on gameScale
+                    let offsetDistance: CGFloat = 50.0 * gameScale
+                    
                     let offsetX = cos(angle) * offsetDistance
                     let offsetY = sin(angle) * offsetDistance
                     
@@ -448,7 +466,17 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                     ball.position = CGPoint(x: launcher.position.x + offsetX, y: launcher.position.y + offsetY)
                     
                     // Impulse magnitude
-                    let power: CGFloat = 80.0
+                    let basePower: CGFloat = 80.0
+                    
+                    // SCALING FIX FOR IPAD:
+                    // Ball Radius scales with Width (Width * 0.1). Mass scales with Area (Radius^2) -> Width^2.
+                    // To keep trajectory similar under constant gravity, Velocity must scale with sqrt(Scale).
+                    // Impulse = Mass * Velocity.
+                    // Mass ~ Scale^2. Velocity ~ Scale^0.5.
+                    // Impulse ~ Scale^2.5.
+                    
+                    // Use gameScale here
+                    let power = basePower * pow(gameScale, 2.5)
                     
                     let impulse = CGVector(dx: cos(angle) * power, dy: sin(angle) * power)
                     ball.physicsBody?.applyImpulse(impulse)
@@ -494,8 +522,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             // Re-calculate physics angle for position
             let physicsAngle = angle // This is the raw angle from atan2, which IS the physical angle
             
-            // Cannon size is 80x80, so half is 40. Barrel tip is roughly 40 units out + margin = 50
-            let offsetDistance: CGFloat = 50.0
+            // Cannon size is 80x80, so half is 40. Barrel tip is roughly 40 units out + margin = 50 (scaled)
+            let offsetDistance: CGFloat = 50.0 * gameScale
             
             let offsetX = cos(physicsAngle) * offsetDistance
             let offsetY = sin(physicsAngle) * offsetDistance
@@ -594,11 +622,21 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             // Simple horizontal movement logic
             // If moving, we update x position by speed * direction
             
-            let speed = config.platformMoveSpeed
+            
+            // Scaling Helper
+            // Reference width is based on iPhone 12/13/14 (approx 390 pts)
+            let referenceWidth: CGFloat = 390.0
+            let scaleFactor = frame.width / referenceWidth
+            
+            // Scale speed linearly to keep relative screen traversal time consistent
+            // Speed (pts/sec) * Scale = New Speed
+            let speed = config.platformMoveSpeed * scaleFactor
+            
             var newX = platform.position.x + (speed * platformDirection)
             
             // Bounds check (Keep within screen with some margin)
-            let margin: CGFloat = 80 // Half platform width approx
+            // Use dynamic margin based on actual platform size + wall thickness (10)
+            let margin: CGFloat = (platform.size.width / 2) + 10.0
             if newX > frame.width - margin {
                 newX = frame.width - margin
                 platformDirection = -1 // Reverse

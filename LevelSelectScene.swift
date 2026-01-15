@@ -26,27 +26,56 @@ class LevelSelectScene: SKScene {
     }
     
     private func createLevelGrid() {
-        let totalLevels = LevelData.levels.count // Dynamic level count
+        let totalLevels = LevelData.levels.count
         let highestUnlocked = GameData.shared.highestUnlockedLevelIndex
         
-        // Calculate Grid
-        // Use 80% of screen width for the grid
-        let availableWidth = frame.width * 0.8
-        let spacing = availableWidth * 0.05
-        let buttonWidth = (availableWidth - (spacing * CGFloat(levelsPerRow - 1))) / CGFloat(levelsPerRow)
-        let buttonSize = CGSize(width: buttonWidth, height: buttonWidth)
+        // Dynamic Columns: 4 for iPad (wider aspect ratio), 3 for iPhone
+        // iPad is 4:3 (~1.33), iPhone is 19.5:9 (~2.16 height/width or ~0.46 width/height)
+        // If width/height > 0.6 (wider screen), use 4 columns
+        let aspectRatio = frame.width / frame.height
+        let levelsPerRow = aspectRatio > 0.6 ? 4 : 3
         
-        // Center the grid
-        let gridWidth = (buttonWidth * CGFloat(levelsPerRow)) + (spacing * CGFloat(levelsPerRow - 1))
-        let startX = frame.midX - (gridWidth / 2) + (buttonWidth / 2)
-        let startY = frame.height * 0.65
+        // Calculate Rows needed
+        let rows = Int(ceil(Double(totalLevels) / Double(levelsPerRow)))
+        
+        // SAFETY BOUNDS
+        // Title is at 0.85, Back Button at 0.15.
+        // Safe area: 0.80 down to 0.20
+        let topY = frame.height * 0.75
+        let bottomY = frame.height * 0.25
+        let availableHeight = topY - bottomY
+        let availableWidth = frame.width * 0.85 // 85% width
+        
+        // Spacing
+        let spacingX = frame.width * 0.02
+        let spacingY = frame.height * 0.02
+        
+        // Calculate Max Possible Button Size
+        // 1. Based on Width
+        let widthForButtons = availableWidth - (spacingX * CGFloat(levelsPerRow - 1))
+        let maxButtonWidth = widthForButtons / CGFloat(levelsPerRow)
+        
+        // 2. Based on Height
+        let heightForButtons = availableHeight - (spacingY * CGFloat(rows - 1))
+        let maxButtonHeight = heightForButtons / CGFloat(rows)
+        
+        // Use the smaller dimension to ensure it fits both ways (keep square)
+        let buttonSide = min(maxButtonWidth, maxButtonHeight)
+        let buttonSize = CGSize(width: buttonSide, height: buttonSide)
+        
+        // Center the grid explicitly
+        let totalGridWidth = (buttonSide * CGFloat(levelsPerRow)) + (spacingX * CGFloat(levelsPerRow - 1))
+        let totalGridHeight = (buttonSide * CGFloat(rows)) + (spacingY * CGFloat(rows - 1))
+        
+        let startX = frame.midX - (totalGridWidth / 2) + (buttonSide / 2)
+        let startY = frame.midY + (totalGridHeight / 2) - (buttonSide / 2) // Centered vertically
         
         for i in 0..<totalLevels {
             let column = i % levelsPerRow
             let row = i / levelsPerRow
             
-            let x = startX + CGFloat(column) * (buttonWidth + spacing)
-            let y = startY - CGFloat(row) * (buttonSize.height + spacing)
+            let x = startX + CGFloat(column) * (buttonSide + spacingX)
+            let y = startY - CGFloat(row) * (buttonSide + spacingY)
             
             let levelIndex = i
             let isUnlocked = levelIndex <= highestUnlocked
