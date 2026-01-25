@@ -24,6 +24,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     private var isLaunched = false
     private var isResetting = false
     
+    // Analytics: track attempts per level
+    private var currentLevelAttempts = 0
+    
     // Level Properties
     var startingLevelIndex = 0 // Public property to set start level
     private var currentLevelIndex = 0
@@ -208,6 +211,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // Reset Score for the level (or keep cumulative? Let's reset for "Target Score")
         score = 0
         scoreLabel?.text = "0 / \(config.targetScore)"
+        
+        // Analytics: Reset attempts and track level started
+        currentLevelAttempts = 1
+        AnalyticsService.shared.trackLevelStarted(levelIndex: index)
         
         // Reposition Basket
         if let basket = basket {
@@ -565,6 +572,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                      if score >= config.targetScore {
                          print("LEVEL COMPLETE!")
                          
+                         // Analytics: Track level completed
+                         AnalyticsService.shared.trackLevelCompleted(levelIndex: self.currentLevelIndex, attempts: self.currentLevelAttempts)
+                         
                          // Save Progress
                          GameData.shared.unlockNextLevel(currentLevelIndex: self.currentLevelIndex)
                          
@@ -599,6 +609,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         if collision == PhysicsCategory.ball | PhysicsCategory.wall {
             let contactPoint = contact.contactPoint
             if contactPoint.y < frame.height * 0.05 {
+                // Analytics: Track failed attempt (ball hit bottom)
+                AnalyticsService.shared.trackLevelFailed(levelIndex: currentLevelIndex, attempts: currentLevelAttempts)
+                currentLevelAttempts += 1
+                
                 resetBall()
             }
         }
