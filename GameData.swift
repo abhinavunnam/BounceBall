@@ -5,6 +5,17 @@ class GameData {
     static let shared = GameData()
     
     private let keyHighestLevelUnlocked = "highestLevelUnlocked"
+    private let keyHasShownTutorial = "hasShownTutorial"
+    
+    // Track whether tutorial has been shown (defaults to false for new players)
+    var hasShownTutorial: Bool {
+        get {
+            return UserDefaults.standard.bool(forKey: keyHasShownTutorial)
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: keyHasShownTutorial)
+        }
+    }
     
     // Default to Level 1 unlocked (index 0)
     var highestUnlockedLevelIndex: Int {

@@ -36,6 +36,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     // Platform Movement
     private var platformDirection: CGFloat = 1.0 // 1 for right, -1 for left
     
+    // Tutorial Properties
+    private var tutorialOverlay: SKNode?
+    private var tutorialStep = 0  // 0=aim, 1=fire, 2=done
+    private var tutorialArrow: SKShapeNode?
+    private var tutorialLabel: SKLabelNode?
+    private var initialCannonRotation: CGFloat = 0
+    
     // Audio Actions
     private let fireSoundAction = SKAction.playSoundFileNamed("fire.mp3", waitForCompletion: false)
     private let bounceSoundAction = SKAction.playSoundFileNamed("bounce.mp3", waitForCompletion: false)
@@ -79,6 +86,12 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         // Load First Level
         loadLevel(index: startingLevelIndex)
+        
+
+        // Show tutorial always for Level 1
+        if startingLevelIndex == 0 {
+            showTutorial()
+        }
     }
 
     // MARK: - Setup Methods
@@ -109,6 +122,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         launcher?.size = CGSize(width: size, height: size)
 
         guard let launcher = launcher else { return }
+        
+        // Set initial rotation (45 degrees visual)
+        launcher.zRotation = (.pi / 4) - cannonVisualCorrection
 
         // Physics setup
         // Use texture physics for more accurate hit detection if it's not a box
@@ -442,6 +458,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         
+        // Handle tutorial - allow gameplay but track progress
+        if tutorialStep == 1 {
+            // Step 1 complete when fire button tapped
+            if let fireButton = fireButton, fireButton.contains(location) {
+                advanceTutorial()
+            }
+        }
+        
         // Check if back button is pressed
         if let backButton = backButton, backButton.contains(location) {
             transitionToLevelSelect()
@@ -537,6 +561,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             // Sync rotation too if desired, though ball is round
             ball.zRotation = physicsAngle
         }
+        
+        // Check if tutorial should advance
+        checkTutorialProgress()
     }
 
     // MARK: - Physics Contact Delegate
@@ -689,5 +716,194 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         let transition = SKTransition.moveIn(with: .left, duration: 0.3)
         view?.presentScene(levelSelectScene, transition: transition)
+    }
+    
+    // MARK: - Tutorial
+    private func showTutorial() {
+        tutorialStep = 0
+        initialCannonRotation = launcher?.zRotation ?? 0
+        
+        // Create overlay container (no dark background - let player see game)
+        let overlay = SKNode()
+        overlay.name = "tutorialOverlay"
+        overlay.zPosition = 500
+        
+        tutorialOverlay = overlay
+        addChild(overlay)
+        
+        // Start with Step 0: Aim tutorial
+        showAimTutorial()
+    }
+    
+    private func showAimTutorial() {
+        guard let overlay = tutorialOverlay, let launcher = launcher else { return }
+        
+        // Create curved arrow near cannon
+        // Create curved double-headed arrow for rotation
+        let arrow = createCurvedArrow()
+        arrow.position = CGPoint(x: launcher.position.x + 100 * gameScale, y: launcher.position.y + 100 * gameScale)
+        arrow.zRotation = .pi / 4
+        arrow.name = "tutorialArrow"
+        overlay.addChild(arrow)
+        tutorialArrow = arrow
+        
+        // Add pulsing animation
+        let pulse = SKAction.sequence([
+            SKAction.scale(to: 1.15, duration: 0.5),
+            SKAction.scale(to: 1.0, duration: 0.5)
+        ])
+        arrow.run(SKAction.repeatForever(pulse))
+        
+        // Add bouncing animation
+        // No looping bounce animation for rotation prompt, just pulse
+        
+
+    }
+    
+    // Helper to create a curved double-headed arrow (Quarter Circle)
+    private func createCurvedArrow() -> SKShapeNode {
+        let container = SKShapeNode() // Container
+        
+        let radius: CGFloat = 40 * gameScale
+        let arcPath = UIBezierPath()
+        // Draw Arc from -45 to +45 degrees (Right side)
+        arcPath.addArc(withCenter: .zero, radius: radius, startAngle: -.pi/4, endAngle: .pi/4, clockwise: true)
+        
+        let arcNode = SKShapeNode(path: arcPath.cgPath)
+        arcNode.strokeColor = .black
+        arcNode.lineWidth = 4 * gameScale
+        arcNode.fillColor = .clear
+        container.addChild(arcNode)
+        
+        // Arrowhead Dimensions
+        let headLength: CGFloat = 12 * gameScale
+        let headWidth: CGFloat = 10 * gameScale
+        
+        // Create Arrowhead Shape Path (Triangle pointing Left)
+        let headPath = UIBezierPath()
+        headPath.move(to: CGPoint(x: 0, y: 0)) // Tip at origin
+        headPath.addLine(to: CGPoint(x: -headLength, y: headWidth/2))
+        headPath.addLine(to: CGPoint(x: -headLength, y: -headWidth/2))
+        headPath.close()
+        
+        // Top Arrow (+45 deg): Should point "Down/Right" (CW direction)
+        // Tangent at +45 for CW motion is -45 degrees
+        let endHead = SKShapeNode(path: headPath.cgPath)
+        endHead.fillColor = .black
+        endHead.strokeColor = .clear
+        // Position at end of arc + offset outwards (direction 135 deg = 3pi/4)
+        let endAngle: CGFloat = .pi/4
+        let endDir: CGFloat = 3 * .pi / 4
+        endHead.position = CGPoint(
+            x: radius * cos(endAngle) + headLength * cos(endDir),
+            y: radius * sin(endAngle) + headLength * sin(endDir)
+        )
+        endHead.zRotation = endDir // Align rotation with direction
+        container.addChild(endHead)
+        
+        // Bottom Arrow (-45 deg): Should point "Up/Right" (CCW direction)
+        // Tangent at -45 for CCW motion is +45 degrees
+        let startHead = SKShapeNode(path: headPath.cgPath)
+        startHead.fillColor = .black
+        startHead.strokeColor = .clear
+        // Position at start of arc + offset outwards (direction -135 deg = -3pi/4)
+        let startAngle: CGFloat = -.pi/4
+        let startDir: CGFloat = -3 * .pi / 4
+        startHead.position = CGPoint(
+            x: radius * cos(startAngle) + headLength * cos(startDir),
+            y: radius * sin(startAngle) + headLength * sin(startDir)
+        )
+        startHead.zRotation = startDir // Align rotation with direction
+        container.addChild(startHead)
+ 
+        return container
+    }
+    
+    private func showFireTutorial() {
+        guard let overlay = tutorialOverlay, let fireButton = fireButton else { return }
+        
+        // Remove old arrow
+        tutorialArrow?.removeFromParent()
+        tutorialLabel?.parent?.removeFromParent()  // Remove label background
+        tutorialLabel?.removeFromParent()
+        
+        // Create arrow pointing at fire button
+        let arrow = createArrow()
+        arrow.position = CGPoint(x: fireButton.position.x, y: fireButton.position.y + 60 * gameScale)
+        arrow.zRotation = -.pi / 2  // Point down
+        arrow.name = "tutorialArrow"
+        overlay.addChild(arrow)
+        tutorialArrow = arrow
+        
+        // Add pulsing animation
+        let pulse = SKAction.sequence([
+            SKAction.scale(to: 1.2, duration: 0.4),
+            SKAction.scale(to: 1.0, duration: 0.4)
+        ])
+        arrow.run(SKAction.repeatForever(pulse))
+        
+        // Add bouncing animation pointing down
+        let bounce = SKAction.sequence([
+            SKAction.moveBy(x: 0, y: -8, duration: 0.3),
+            SKAction.moveBy(x: 0, y: 8, duration: 0.3)
+        ])
+        arrow.run(SKAction.repeatForever(bounce))
+        
+
+
+    }
+    
+    private func createArrow() -> SKShapeNode {
+        // Create arrow shape using bezier path
+        let arrowPath = UIBezierPath()
+        let size: CGFloat = 30 * gameScale
+        
+        // Arrow pointing right (will be rotated as needed)
+        arrowPath.move(to: CGPoint(x: -size, y: size/3))
+        arrowPath.addLine(to: CGPoint(x: 0, y: size/3))
+        arrowPath.addLine(to: CGPoint(x: 0, y: size/1.5))
+        arrowPath.addLine(to: CGPoint(x: size, y: 0))
+        arrowPath.addLine(to: CGPoint(x: 0, y: -size/1.5))
+        arrowPath.addLine(to: CGPoint(x: 0, y: -size/3))
+        arrowPath.addLine(to: CGPoint(x: -size, y: -size/3))
+        arrowPath.close()
+        
+        let arrow = SKShapeNode(path: arrowPath.cgPath)
+        arrow.fillColor = .black
+        arrow.strokeColor = .darkGray
+        arrow.lineWidth = 1
+        arrow.zPosition = 501
+        
+        return arrow
+    }
+    
+    private func checkTutorialProgress() {
+        // Called from rotateCannon - check if user has rotated enough
+        guard tutorialStep == 0, let launcher = launcher else { return }
+        
+        let rotationDelta = abs(launcher.zRotation - initialCannonRotation)
+        if rotationDelta > 0.2 {  // About 11 degrees of rotation
+            tutorialStep = 1
+            showFireTutorial()
+        }
+    }
+    
+    private func advanceTutorial() {
+        dismissTutorial()
+    }
+    
+    private func dismissTutorial() {
+        // Mark tutorial as shown
+        GameData.shared.hasShownTutorial = true
+        tutorialStep = 2
+        
+        // Animate out and remove
+        tutorialOverlay?.run(SKAction.sequence([
+            SKAction.fadeOut(withDuration: 0.3),
+            SKAction.removeFromParent()
+        ]))
+        tutorialOverlay = nil
+        tutorialArrow = nil
+        tutorialLabel = nil
     }
 }
