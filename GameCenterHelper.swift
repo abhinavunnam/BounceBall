@@ -33,19 +33,43 @@ class GameCenterHelper {
                 return
             }
             
-            if viewController != nil {
-                // Game Center login UI would be shown - we skip for analytics
-                print("GameCenterHelper: Login UI required but skipping for analytics")
-                completion?(false)
+            if let viewController = viewController {
+                // Present the Game Center login/permission UI
+                print("GameCenterHelper: Presenting Game Center login UI")
+                DispatchQueue.main.async {
+                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                       let rootVC = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController {
+                        rootVC.present(viewController, animated: true)
+                    }
+                }
+                // Handler will be called again after user action
                 return
             }
             
             if localPlayer.isAuthenticated {
-                // Successfully authenticated - use Game Center player ID
-                self.playerId = localPlayer.gamePlayerID
-                self.isAuthenticated = true
-                print("GameCenterHelper: Authenticated with player ID: \(self.playerId)")
-                completion?(true)
+                // Successfully authenticated
+                let pid = localPlayer.gamePlayerID
+                let alias = localPlayer.alias
+                
+                print("GameCenterHelper: Auth Success. Alias: \(alias), ID: '\(pid)'")
+                
+                if !pid.isEmpty {
+                    self.playerId = pid
+                    self.isAuthenticated = true
+                    completion?(true)
+                } else {
+                    print("GameCenterHelper: Authenticated but ID is EMPTY. Using fallback.")
+                    // Try to fetch specific identity if needed (iOS 13+ has teamPlayerID)
+                    print("GameCenterHelper: Team ID: \(localPlayer.teamPlayerID)")
+                    
+                    if !localPlayer.teamPlayerID.isEmpty {
+                         self.playerId = localPlayer.teamPlayerID
+                         self.isAuthenticated = true
+                         completion?(true)
+                    } else {
+                        completion?(false)
+                    }
+                }
             } else {
                 print("GameCenterHelper: Not authenticated, using device ID")
                 completion?(false)

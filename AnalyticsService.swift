@@ -35,21 +35,28 @@ class AnalyticsService {
             "app_version": appVersion
         ]
         
-        postToSupabase(
-            endpoint: SupabaseConfig.sessionsEndpoint,
-            data: sessionData
-        ) { [weak self] result in
-            switch result {
-            case .success(let response):
-                // Extract session ID from response
-                if let sessions = response as? [[String: Any]],
-                   let firstSession = sessions.first,
-                   let sessionId = firstSession["id"] as? String {
-                    self?.currentSessionId = sessionId
-                    print("AnalyticsService: Session started with ID: \(sessionId)")
+        print("AnalyticsService: Attempting to start session for Player ID: '\(playerId)'")
+        
+        // Dispatch to background to ensure we don't block main thread
+        DispatchQueue.global(qos: .background).async { [weak self] in
+            guard let self = self else { return }
+            
+            self.postToSupabase(
+                endpoint: SupabaseConfig.sessionsEndpoint,
+                data: sessionData
+            ) { result in
+                switch result {
+                case .success(let response):
+                    // Extract session ID from response
+                    if let sessions = response as? [[String: Any]],
+                       let firstSession = sessions.first,
+                       let sessionId = firstSession["id"] as? String {
+                        self.currentSessionId = sessionId
+                        print("AnalyticsService: Session started with ID: \(sessionId)")
+                    }
+                case .failure(let error):
+                    print("AnalyticsService: Failed to start session - \(error.localizedDescription)")
                 }
-            case .failure(let error):
-                print("AnalyticsService: Failed to start session - \(error.localizedDescription)")
             }
         }
     }
@@ -86,6 +93,35 @@ class AnalyticsService {
         sessionStartTime = nil
     }
     
+    // MARK: - Identity Management
+    
+    /// Update player ID for the current session (e.g. after Game Center login)
+    func updatePlayerId(_ newId: String) {
+        guard let sessionId = currentSessionId else {
+            // No active session, just start one with this ID
+            startSession()
+            return
+        }
+        
+        print("AnalyticsService: Updating player ID to: '\(newId)'")
+        
+        let updateData: [String: Any] = [
+            "player_id": newId
+        ]
+        
+        patchToSupabase(
+            endpoint: "\(SupabaseConfig.sessionsEndpoint)?id=eq.\(sessionId)",
+            data: updateData
+        ) { result in
+            switch result {
+            case .success:
+                print("AnalyticsService: Successfully updated session with new Player ID")
+            case .failure(let error):
+                print("AnalyticsService: Failed to update player ID - \(error.localizedDescription)")
+            }
+        }
+    }
+
     // MARK: - Level Event Tracking
     
     /// Track when a level is started

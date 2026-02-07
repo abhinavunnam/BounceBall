@@ -14,11 +14,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Authenticate with Game Center to get player ID
-        GameCenterHelper.shared.authenticate { success in
-            print("AppDelegate: Game Center auth result: \(success)")
-            // Start analytics session after authentication attempt
-            AnalyticsService.shared.startSession()
+        
+        // Start initial session immediately (background queue handles network)
+        AnalyticsService.shared.startSession()
+        
+        // Delay Game Center auth slightly to prevent launch-time hangs/crashes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            GameCenterHelper.shared.authenticate { success in
+                let playerId = GameCenterHelper.shared.getCurrentPlayerId()
+                print("AppDelegate: Game Center auth finished. Success: \(success). ID: \(playerId)")
+                
+                // Update the existing session with the real Player ID
+                AnalyticsService.shared.updatePlayerId(playerId)
+            }
         }
         
         return true
